@@ -5,7 +5,7 @@
  * @version 1.0.1
  * @description 发送IKUN语录和表情包
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
- * @rule (鸡你太美|坤坤|ikun|IKUN|小黑子|小黑粉|真爱粉|你干嘛|纯路人|人民网)(.*)$
+ * @rule ^(鸡你太美|坤坤|ikun|IKUN|小黑子|小黑粉|真爱粉|你干嘛|纯路人|人民网)(.*)$
  * @admin false
  * @disable false
  */
