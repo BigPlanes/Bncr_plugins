@@ -24,8 +24,8 @@ module.exports = async s => {
 
     let mode = 1            // 模式，link: 0，vlan: 1   (单拨选link，单线多拨选vlan)
 
-    let msg_list = 0       // 撤回IP列表消息时间
-    let msg_wait = 0        // 撤回消息时间
+    let msg_list = 20       // 撤回IP列表消息时间
+    let msg_wait = 2        // 撤回消息时间
     let Redial_wait = 3     // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
 
     let path = 'https://img.qichacha.com/Product/32b13678-5d09-4734-b91d-ad9fdd0cf24d.jpg'  // 图片（可为空）
