@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.0.4
+ * @version 1.0.7
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)([0-9]+)$
@@ -22,20 +22,25 @@ module.exports = async s => {
 
     let hide = true         // 是否隐藏IP网段
 
-    let mode = 1            // 模式，link: 0，vlan: 1
+    let mode = 1            // 模式，link: 0，vlan: 1   (单拨选link，单线多拨选vlan)
 
-    let msg_list = 20       // 撤回IP列表消息时间
-    let msg_wait = 2        // 撤回消息时间
+    let msg_list = 0       // 撤回IP列表消息时间
+    let msg_wait = 0        // 撤回消息时间
     let Redial_wait = 3     // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
+
+    let path = 'https://img.qichacha.com/Product/32b13678-5d09-4734-b91d-ad9fdd0cf24d.jpg'  // 图片（可为空）
 
     const key = `ikuai`;    // 键
 
-    ['重拨'].includes(s.param(2)) && await main(key);
+    ['查询', '重拨'].includes(s.param(2)) && await main(key);
     ['重置'].includes(s.param(2)) && await reset(key);
-    ['查询'].includes(s.param(2)) && s.delMsg(s.getMsgId()) && await get_ip(value, await get_cookie(value))
     async function main() {
         s.delMsg(s.getMsgId())
         if (value = await sysdb.get(key)) {
+            if (['查询'].includes(s.param(2))) {
+                s.delMsg(s.getMsgId()) && await get_ip(value, await get_cookie(value))
+                return;
+            }
             if (s.param(3)) {
                 let cookie = await get_cookie(value)
                 await Redial(s.param(3))
@@ -78,7 +83,14 @@ module.exports = async s => {
             "headers": {
                 "cookie": cookie,
             },
-            "data": {
+            "data_link": {
+                "func_name": "monitor_iface",
+                "action": "show",
+                "param": {
+                    "TYPE": "iface_check,iface_stream"
+                }
+            },
+            "data_vlan": {
                 "func_name": "wan",
                 "action": "show",
                 "param": {
@@ -89,42 +101,54 @@ module.exports = async s => {
                     "limit": "0,20",
                     "vlan_internet": 2
                 }
-            }
+            },
+            "mode": [
+                "data_link",
+                "data_vlan"
+            ]
         }
-        if (data = await post(json_getIp.url, json_getIp.headers, json_getIp.data)) {
+        if (data = await post(json_getIp.url, json_getIp.headers, json_getIp[json_getIp.mode[mode]])) {
             if (data.status === 200) {
                 if (data.data.Result === 30000) {
-                    // console.log(JSON.stringify(data.data));
-                    let wansNum = data.data.Data.vlan_data.length;
                     let id = []
+                    if (mode == 0) {
+                        data = data.data.Data.iface_check
+                        ip_addr = 'ip_addr'
+                        datetime = 'updatetime'
+                    } else {
+                        data = data.data.Data.vlan_data
+                        ip_addr = 'pppoe_ip_addr'
+                        datetime = 'pppoe_updatetime'
+                    }
+                    let wansNum = data.length;
                     if (wansNum === 1) {
+                        id[0] = data[0].id
                         if (hide) {
-                            ip = `*${data.data.Data.vlan_data[0].pppoe_ip_addr.match(/[.].*/)}`
-                        } else ip = data.data.Data.vlan_data[0].pppoe_ip_addr
-                        updatetime = time(data.data.Data.vlan_data[0].pppoe_updatetime, 2)
-                        // msg += `\n${data.data.Data.vlan_data[i].id}. IP: ${ip}`
-                        msg = `\n1. IP: ${ip}`
+                            ip = `*${data[0][ip_addr].match(/[.].*/)}`
+                        } else ip = data[0][ip_addr]
+                        updatetime = time(data[0][datetime], 2)
+                        msg = `\n${data[0].id}. IP: ${ip}`
                         msg += `\n${updatetime}`
                     } else {
                         msg = `当前线路数量：${wansNum}\n`
                         // msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
                         msg += `\n0. 全部`
                         for (let i = 0; i < wansNum; i++) {
-                            id[i] = data.data.Data.vlan_data[i].id
+                            id[i] = data[i].id
                             if (hide) {
-                                ip = `*${data.data.Data.vlan_data[i].pppoe_ip_addr.match(/[.].*/)}`
-                            } else ip = data.data.Data.vlan_data[i].pppoe_ip_addr
-                            updatetime = time(data.data.Data.vlan_data[i].pppoe_updatetime, 2)
+                                ip = `*${data[i][ip_addr].match(/[.].*/)}`
+                            } else ip = data[i][ip_addr]
+                            updatetime = time(data[i][datetime], 2)
                             msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
-                            msg += `\n${i + 1}. IP: ${ip}`
-                            // msg += `\n${data.data.Data.vlan_data[i].id}. IP: ${ip}`
+                            msg += `\n${data[i].id}. IP: ${ip}`
                             msg += `\n${updatetime}`
                         }
                         // msg += `\n\n请选择重拨线路`
                     }
+                    !['tgBot', 'HumanTG'].includes(s.getFrom()) && s.reply(msg);
                     s.delMsg(await s.reply({
                         type: `image`,
-                        path: `https://img.qichacha.com/Product/32b13678-5d09-4734-b91d-ad9fdd0cf24d.jpg`,
+                        path: path,
                         msg: msg
                     }), { wait: msg_list })
                     return id
@@ -135,7 +159,11 @@ module.exports = async s => {
 
     // 获取需要重拨的线路id
     async function select_id(id) {
-        await sysMethod.sleep(1);
+        if (id.length == 1) {
+            await Redial(id[0])
+            return
+        }
+        // await sysMethod.sleep(1);
         msgid_ids = await s.reply({
             type: 'text',
             msg: "选择需要重启的线路"
@@ -172,6 +200,10 @@ module.exports = async s => {
 
     // pppoe重拨
     async function Redial(id) {
+        if (isNaN(id)) {
+            s.delMsg(await s.reply('输入错误'), { await: msg_wait })
+            return
+        }
         json_Redial = {
             "url": `${value.host}/Action/call`,
             "headers": {
@@ -287,8 +319,8 @@ module.exports = async s => {
                     return 'again'
                 }
             }, 30);
-            if (content === null) return s.delMsg(await s.reply('超时已退出'), { wait: msg_wait });
-            if (content.getMsg() === 'q') return s.delMsg(await s.reply('已退出'), content.getMsgId(), { wait: msg_wait });
+            if (content === null) return s.delMsg(await s.reply('超时已退出'), first, { wait: msg_wait });
+            if (content.getMsg() === 'q') return s.delMsg(await s.reply('已退出'), first, content.getMsgId(), { wait: msg_wait });
             //撤回用户发的信息
             s.delMsg(content.getMsgId(), first);
             return content.getMsg()
