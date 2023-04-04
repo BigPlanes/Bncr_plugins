@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name IKUN
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @description 发送IKUN语录和表情包
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(鸡你太美|坤坤|ikun|IKUN|小黑子|小黑粉|真爱粉|你干嘛|纯路人|人民网)(.*)$
@@ -25,6 +25,7 @@ module.exports = async s => {
         path: jpgURL,
         msg: ikun_yvlu(),
     });
+    !['tgBot', 'HumanTG'].includes(s.getFrom()) && s.reply(ikun_yvlu());
     open && fs.unlinkSync(jpgURL);
 };
 
