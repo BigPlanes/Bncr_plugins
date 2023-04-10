@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 买家秀
  * @origin 大灰机
- * @version 1.0.0
+ * @version 1.0.1
  * @description 发送淘宝买家秀
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(买家秀|mjx)
@@ -15,7 +15,7 @@ const axios = require('axios')
 module.exports = async s => {
     let num = 10            // 数量
     let time = 3            // 轮换时间
-    let delVideo = true     // 是否删除最后一条
+    let delImage = true     // 是否删除最后一条
     let msg = ``            // 标题
     main()
     async function main() {
@@ -37,14 +37,14 @@ module.exports = async s => {
                 } else {
                     await s.reply({
                         type: 'image',
-                        path: video_url,
+                        path: image_url,
                         // msg: msg
                     })
                     return
                 }
             } else if (i > 0 && s.getFrom() === 'HumanTG') {
                 edit = await s.Bridge.editImage({
-                    type: 'video',
+                    type: 'image',
                     path: image_url,
                     msg: msg,
                     groupId: s.getGroupId(),
@@ -55,7 +55,7 @@ module.exports = async s => {
             }
             await sysMethod.sleep(time)
         }
-        delVideo && s.delMsg(msgid)
+        delImage && s.delMsg(msgid)
     }
 }
 
