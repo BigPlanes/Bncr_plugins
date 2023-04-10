@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.0.7
+ * @version 1.0.8
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)([0-9]+)$
@@ -42,10 +42,9 @@ module.exports = async s => {
                 return;
             }
             if (s.param(3)) {
-                let cookie = await get_cookie(value)
-                await Redial(s.param(3))
+                await select_id(await get_ip(value, await get_cookie(value), false), s.param(3))
             } else {
-                await select_id(await get_ip(value, await get_cookie(value)))
+                await select_id(await get_ip(value, await get_cookie(value), true))
             }
         } else {
             await set(key)
@@ -77,7 +76,7 @@ module.exports = async s => {
     }
 
     //获取当前线路
-    async function get_ip(value, cookie) {
+    async function get_ip(value, cookie, send) {
         json_getIp = {
             "url": `${value.host}/Action/call`,
             "headers": {
@@ -146,11 +145,13 @@ module.exports = async s => {
                         // msg += `\n\n请选择重拨线路`
                     }
                     !['tgBot', 'HumanTG'].includes(s.getFrom()) && s.reply(msg);
-                    s.delMsg(await s.reply({
-                        type: `image`,
-                        path: path,
-                        msg: msg
-                    }), { wait: msg_list })
+                    if (send) {
+                        s.delMsg(await s.reply({
+                            type: `image`,
+                            path: path,
+                            msg: msg
+                        }), { wait: msg_list })
+                    }
                     return id
                 } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
             } else return console.log(`获取IP异常：${data.status}`)
@@ -158,7 +159,12 @@ module.exports = async s => {
     }
 
     // 获取需要重拨的线路id
-    async function select_id(id) {
+    async function select_id(id, idi) {
+        if (idi) {
+            // console.log(id[idi - 1]);
+            Redial(id[idi - 1])
+            return
+        }
         if (id.length == 1) {
             await Redial(id[0])
             return
@@ -173,7 +179,7 @@ module.exports = async s => {
             let msg = s.getMsg();
             if (msg === 'q') {
             } else if (msg == 0) {
-                for (let i = 1; i <= id.length; i++) {
+                for (let i = 0; i < id.length; i++) {
                     await Redial(id[i])
                 }
             }
@@ -261,11 +267,11 @@ module.exports = async s => {
             };
             if (i === 1) {
                 s.delMsg(await s.reply(`ID:${json_Redial.data.param.id}:重启完成`), { wait: 5 });
-                if (bncr_restart) {
-                    await sysMethod.sleep(restart_wait)
-                    sysMethod.inline('重启');
-                }
             }
+        }
+        if (bncr_restart) {
+            await sysMethod.sleep(restart_wait)
+            sysMethod.inline('重启');
         }
         return true;
     }
