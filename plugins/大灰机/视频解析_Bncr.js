@@ -18,8 +18,8 @@ const axios = require('axios')
 const api_url = `https://www.mxnzp.com/api/douyin/video?url=`
 
 // app_id和app_secret去https://www.mxnzp.com/申请，填在下方
-const app_id = `aicepjhumrabnmkn`
-const app_secret = `UHl1Q0hhWEc5Lzl3ZmM4S0dOYUJlZz09`
+const app_id = ``
+const app_secret = ``
 // 短链接生成API
 const short_url = `https://xiaoapi.cn/API/dwz.php?url=`
 
