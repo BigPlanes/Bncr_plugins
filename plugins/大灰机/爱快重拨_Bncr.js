@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.0.8
+ * @version 1.0.9
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)([0-9]+)$
@@ -38,7 +38,7 @@ module.exports = async s => {
         s.delMsg(s.getMsgId())
         if (value = await sysdb.get(key)) {
             if (['查询'].includes(s.param(2))) {
-                s.delMsg(s.getMsgId()) && await get_ip(value, await get_cookie(value))
+                s.delMsg(s.getMsgId()) && await get_ip(value, await get_cookie(value), true)
                 return;
             }
             if (s.param(3)) {
@@ -76,7 +76,7 @@ module.exports = async s => {
     }
 
     //获取当前线路
-    async function get_ip(value, cookie, send) {
+    async function get_ip(value, cookie, send, newid) {
         json_getIp = {
             "url": `${value.host}/Action/call`,
             "headers": {
@@ -106,62 +106,74 @@ module.exports = async s => {
                 "data_vlan"
             ]
         }
-        if (data = await post(json_getIp.url, json_getIp.headers, json_getIp[json_getIp.mode[mode]])) {
-            if (data.status === 200) {
-                if (data.data.Result === 30000) {
-                    let id = []
-                    if (mode == 0) {
-                        data = data.data.Data.iface_check
-                        ip_addr = 'ip_addr'
-                        datetime = 'updatetime'
-                    } else {
-                        data = data.data.Data.vlan_data
-                        ip_addr = 'pppoe_ip_addr'
-                        datetime = 'pppoe_updatetime'
-                    }
-                    let wansNum = data.length;
-                    if (wansNum === 1) {
-                        id[0] = data[0].id
-                        if (hide) {
-                            ip = `*${data[0][ip_addr].match(/[.].*/)}`
-                        } else ip = data[0][ip_addr]
-                        updatetime = time(data[0][datetime], 2)
-                        msg = `\n${data[0].id}. IP: ${ip}`
-                        msg += `\n${updatetime}`
-                    } else {
-                        msg = `当前线路数量：${wansNum}\n`
-                        // msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
-                        msg += `\n0. 全部`
-                        for (let i = 0; i < wansNum; i++) {
-                            id[i] = data[i].id
-                            if (hide) {
-                                ip = `*${data[i][ip_addr].match(/[.].*/)}`
-                            } else ip = data[i][ip_addr]
-                            updatetime = time(data[i][datetime], 2)
-                            msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
-                            msg += `\n${data[i].id}. IP: ${ip}`
-                            msg += `\n${updatetime}`
+        do {
+            if (data = await post(json_getIp.url, json_getIp.headers, json_getIp[json_getIp.mode[mode]])) {
+                if (data.status === 200) {
+                    if (data.data.Result === 30000) {
+                        let id = []
+                        if (mode == 0) {
+                            data = data.data.Data.iface_check
+                            ip_addr = 'ip_addr'
+                            datetime = 'updatetime'
+                        } else {
+                            data = data.data.Data.vlan_data
+                            ip_addr = 'pppoe_ip_addr'
+                            datetime = 'pppoe_updatetime'
                         }
-                        // msg += `\n\n请选择重拨线路`
-                    }
-                    !['tgBot', 'HumanTG'].includes(s.getFrom()) && s.reply(msg);
-                    if (send) {
-                        s.delMsg(await s.reply({
-                            type: `image`,
-                            path: path,
-                            msg: msg
-                        }), { wait: msg_list })
-                    }
-                    return id
-                } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
-            } else return console.log(`获取IP异常：${data.status}`)
-        }
+                        if (newid) {
+                            if (hide) {
+                                ip = `*${data[newid][ip_addr].match(/[.].*/)}`
+                            } else ip = data[newid][ip_addr]
+                            if (data[newid][ip_addr]) {
+                                return ip
+                            } else {
+                                circulate = true
+                            }
+                        }
+                        let wansNum = data.length;
+                        if (wansNum === 1) {
+                            id[0] = data[0].id
+                            if (hide) {
+                                ip = `*${data[0][ip_addr].match(/[.].*/)}`
+                            } else ip = data[0][ip_addr]
+                            updatetime = time(data[0][datetime], 2)
+                            msg = `\n${data[0].id}. IP: ${ip}`
+                            msg += `\n${updatetime}`
+                        } else {
+                            msg = `当前线路数量：${wansNum}\n`;
+                            // msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
+                            !(['查询'].includes(s.param(2))) && (msg += `\n0. 全部`);
+                            for (let i = 0; i < wansNum; i++) {
+                                id[i] = data[i].id
+                                if (hide) {
+                                    ip = `*${data[i][ip_addr].match(/[.].*/)}`
+                                } else ip = data[i][ip_addr]
+                                updatetime = time(data[i][datetime], 2)
+                                msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
+                                msg += `\n${data[i].id}. IP: ${ip}`
+                                msg += `\n${updatetime}`
+                            };
+                            // msg += `\n\n请选择重拨线路`
+                        }
+                        if (!newid && send) {
+                            s.delMsg(await s.reply({
+                                type: `image`,
+                                path: path,
+                                msg: msg
+                            }), { wait: msg_list })
+                            !['tgBot', 'HumanTG'].includes(s.getFrom()) && s.reply(msg);
+                        }
+                        if (!newid) return id
+                    } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
+                } else return console.log(`获取IP异常：${data.status}`)
+            }
+            await sysMethod.sleep(1)
+        } while (circulate)
     }
 
     // 获取需要重拨的线路id
     async function select_id(id, idi) {
         if (idi) {
-            // console.log(id[idi - 1]);
             Redial(id[idi - 1])
             return
         }
@@ -169,7 +181,6 @@ module.exports = async s => {
             await Redial(id[0])
             return
         }
-        // await sysMethod.sleep(1);
         msgid_ids = await s.reply({
             type: 'text',
             msg: "选择需要重启的线路"
@@ -190,16 +201,13 @@ module.exports = async s => {
         s.delMsg(content.getMsgId(), msgid_ids);
         if (get_msg = content.getMsg().match(/(\d+)([-\s])(\d+)/)) {
             for (let i = get_msg[1]; i <= get_msg[3]; i++) {
-                // console.log(id[i - 1]);
                 await Redial(id[i - 1])
             }
         } else if ((get_msg = content.getMsg().split(',')).length > 1) {
             for (let i = 0; i < get_msg.length; i++) {
-                // console.log(id[get_msg[i] - 1]);
                 await Redial(id[get_msg[i] - 1])
             }
         } else {
-            // console.log(id[content.getMsg() - 1]);
             await Redial(id[content.getMsg() - 1])
         }
     }
@@ -256,17 +264,19 @@ module.exports = async s => {
         }
         for (let i = 0; i < 2; i++) {
             json_Redial.data.action = json_Redial.data_back[json_Redial.data_back.modes[mode]][i];
-            (i === 1) && (await sysMethod.sleep(Redial_wait));
+
             if (data = await post(json_Redial.url, json_Redial.headers, json_Redial.data)) {
                 if (data.status === 200) {
                     if (data.data.Result === 30000) {
-                        console.log(`${json_Redial.tip[i]}:${data.data.ErrMsg}`)
+                        (i === 0) && console.log(`ID:${i + 1}`);
+                        console.log(`${json_Redial.tip[i]}:${data.data.ErrMsg}`);
                         // await s.reply(`ID:${json_Redial.data.param.id}:${json_Redial.tip[i]}完成`)
                     } else return console.log(`PPPoE\nID:${json_Redial.data.param.id}:${json_Redial.tip[i]}异常：\n${JSON.stringify(data.data)}`)
                 } else return console.log(`PPPoE\nID:${json_Redial.data.param.id}:${json_Redial.tip[i]}异常：${data.status}`)
+                    (i === 1) && (await sysMethod.sleep(Redial_wait));
             };
             if (i === 1) {
-                s.delMsg(await s.reply(`ID:${json_Redial.data.param.id}:重启完成`), { wait: 5 });
+                s.delMsg(await s.reply(`ID:${json_Redial.data.param.id}:重启完成`), await s.reply(`ID:${json_Redial.data.param.id}\n旧IP:${ip}\n新IP:${await get_ip(value, await get_cookie(value), false, id - 1)}`), { wait: 5 });
             }
         }
         if (bncr_restart) {
