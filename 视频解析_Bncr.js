@@ -2,9 +2,16 @@
  * @author 薛定谔的大灰机
  * @name 短视频解析
  * @origin 大灰机
- * @version 1.0.4
- * @description 猪头短视频解析<https://watermark.iculture.cc/>
+ * @version 1.0.5
+ * @description 多个视频解析，目前支持抖音、哔哩哔哩
+ * 
+ * 抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
+ * 
+ * 哔哩哔哩
+ * @rule (http.?://.*b23\.tv/\S+/?)
+ * @rule (http.?://\S+.bilibili\.com/\S+/?)
+ * 
  * @priority 9999
  * @admin false
  * @disable false
@@ -13,37 +20,84 @@
 
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios')
-// 短视频解析API
-const api_url = `https://www.mxnzp.com/api/douyin/video?url=`
+const axios = require('axios');
 
 // app_id和app_secret去https://www.mxnzp.com/申请，填在下方
 const app_id = ``
 const app_secret = ``
+
 // 短链接生成API
 const short_url = `https://xiaoapi.cn/API/dwz.php?url=`
+// 抖音短视频解析API
+const douyin_api_url = `https://www.mxnzp.com/api/douyin/video`
+// 哔哩哔哩视频解析（有水印）
+const bilibili_api_url = ` https://www.mxnzp.com/api/bilibili/video`
+
 
 module.exports = async s => {
-    let url = `${api_url}${btoa(s.param(1))}&app_id=${app_id}&app_secret=${app_secret}`
+    tail = `?url=${btoa(s.param(1))}&app_id=${app_id}&app_secret=${app_secret}`
     await s.reply(`正在解析`)
-    // await s.delMsg(s.getMsgId())
-    if (json = await get(url)) {
-        // return
-        if (json.code == 1) {
-            if (s.param(1).includes(`douyin`)) {
-                await douyin()
-            }
-        } else {
-            video = ``
-            msg = `接口返回：${json.msg}\n状态码：${json.code}`
-        }
-    } else {
-        video = ``
-        msg = `解析失败`
+    if (s.param(1).includes(`douyin`)) {
+        content = await douyin()
+        await send(s, content.msg, content.video)
+    } else if (s.param(1).includes(`bilibili`) || s.param(1).includes(`b23`)) {
+        content = await bilibili()
+        await send(s, content.msg, content.video)
     }
-    console.log(msg);
+}
+
+async function douyin() {
+    if (!(data = (await get(douyin_api_url + tail)).data)) {
+        return {
+            video: ``,
+            msg: `解析失败`
+        }
+    }
+    video = data.url
+    msg = `抖音解析成功\n `
+    msg += `\n标题：${data.title}`
+    msg += `\n时长：${data.durationFormat}`
+    msg += `\n分辨率：${data.accept}`
+    msg += `\n视频：${await get(`${short_url}${data.url}`)}`
+    return {
+        video,
+        msg
+    }
+}
+
+
+async function bilibili() {
+    if (!(data = (await get(bilibili_api_url + tail)).data)) {
+        return {
+            video: ``,
+            msg: `解析失败`
+        }
+    }
+    video = data.list[0].url
+    msg = `哔哩哔哩解析成功\n `
+    msg += `\n标题：${data.title}`
+    msg += `\n时长：${data.list[0].durationFormat}`
+    msg += `\n分辨率：${data.list[0].accept}`
+    msg += `\n视频：${await get(`${short_url}${data.list[0].url}`)}`
+    return {
+        video,
+        msg
+    }
+}
+
+// get请求
+async function get(url) {
+    var data = await axios({
+        "url": url,
+        "method": "get",
+    });
+    if (data.status === 200) {
+        return data.data
+    }
+}
+
+async function send(s, msg, video) {
     if (['HumanTG'].includes(s.getFrom())) {
-        // if (['HumanTG', 'tgBot'].includes(s.getFrom())) {
         (msgid = await s.reply({
             type: 'video',
             path: video,
@@ -54,7 +108,7 @@ module.exports = async s => {
             await sysMethod.sleep(1)
             await s.reply(msg)
             open = false;
-            (video = await downloadFile(video)), open = true;   /* 存储图片 */
+            (video = await downloadFile(video)), open = true;   /* 存储视频 */
             if (await s.reply({
                 type: 'video',
                 path: video,
@@ -71,28 +125,6 @@ module.exports = async s => {
             path: video,
         })
     }
-}
-
-// get请求
-async function get(url) {
-    var data = await axios({
-        "url": url,
-        "method": "get",
-    });
-    if (data.status === 200) {
-        return data.data
-    } else {
-        return
-    }
-}
-
-async function douyin() {
-    video = json.data.url
-    msg = `抖音解析成功\n `
-    msg += `\n标题：${json.data.title}`
-    msg += `\n时长：${json.data?.durationFormat}`
-    msg += `\n分辨率：${json.data?.accept}`
-    msg += `\n视频：${await get(`${short_url}${json.data.url}`)}`
 }
 
 // 时间戳转换
