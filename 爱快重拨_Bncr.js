@@ -158,7 +158,7 @@ module.exports = async s => {
                                 oldip[0] = ip = `*${data[0][ip_addr].match(/[.].*/)}`
                             } else oldip[0] = ip = data[0][ip_addr]
                             updatetime = time(data[0][datetime], 2)
-                            msg = `${i + 1}. IP: ${ip}`
+                            msg = `${wansNum}. IP: ${ip}`
                             msg += `\n${updatetime}`
                         } else {
                             msg = `当前线路数量：${wansNum}\n`;
