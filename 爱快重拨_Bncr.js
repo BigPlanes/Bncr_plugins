@@ -22,6 +22,7 @@
 优化并修复对话内容问题
  */
 
+
 sysMethod.testModule(['md5'], { install: true });
 const axios = require('axios');
 const sysdb = new BncrDB('DHJ');    // 表
