@@ -193,7 +193,7 @@ module.exports = async s => {
                                 }), msg_list)
                                 !['HumanTG'].includes(s.getFrom()) && s.reply(msg);
                             }
-                            return id//[8]//
+                            return id
                         }
                     } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
                 } else return console.log(`获取IP异常：${data.status}`)
