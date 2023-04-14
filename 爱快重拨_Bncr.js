@@ -19,16 +19,11 @@
 
 功能：
 支持多线、单线重拨（自行修改插件内 'mode' 变量）
-重拨后执行一条自定义命令(例如: time)
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
 显示重拨后新的IP
 
-v1.1.1更新内容：
-修复单线拨号时获取不到重拨后IP
-新增重拨后执行一条自定义命令
-
-v1.1.0更新内容：
+本次更新内容：
 优化多线重拨逻辑，提升多线的重拨速度
 优化并修复对话内容问题
  */
@@ -39,7 +34,7 @@ const sysdb = new BncrDB('DHJ');    // 表
 const md5 = require('md5');
 
 module.exports = async s => {
-    let diy_directives = `time` // 自定义执行一条命令
+    let diy_directives = `time` // 自定义执行一条命令(例如:更换白名单)
     let bncr_restart = false    // 重拨IP后是否重启Bncr
     let restart_wait = 5        // 重拨后多久执行重启Bncr
 
@@ -147,7 +142,8 @@ module.exports = async s => {
                         }
                         if (newid || newid == 0) {
                             if (!data[newid]) {
-                                return `不存在的线路`
+                                circulate = true
+                                continue
                             }
                             if (hide) {
                                 oldip[0] = ip = `*${data[newid][ip_addr].match(/[.].*/)}`
@@ -193,7 +189,7 @@ module.exports = async s => {
                                 }), msg_list)
                                 !['HumanTG'].includes(s.getFrom()) && s.reply(msg);
                             }
-                            return id
+                            return id//[8]//
                         }
                     } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
                 } else return console.log(`获取IP异常：${data.status}`)
