@@ -212,7 +212,7 @@ module.exports = async s => {
             return
         }
         if (id.length == 1) {
-            await Redial(id[0], (id[0]))
+            await Redial(id[0], id[0])
             return
         }
         msgid_ids = await s.reply({
