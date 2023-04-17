@@ -22,14 +22,14 @@ const sysdb = new BncrDB('ALAPI')
 const api_kd = `https://v2.alapi.cn/api/kd`
 
 module.exports = async s => {
-    token = await sysdb.get('Token') || ``  // 可以通过'set ALAPI Token *****'设置Token，或者在此行的||后面填入Token
+    token = await sysdb.get('Token') || ``  // 可以通过`set ALAPI Token *****`设置Token，或者在此行的||后面填入Token
     let fold = true         // 折叠
     let order = `desc`      // 查询结果排序方式[desc, asc]
     msg_wait = 2
 
     let data = {}
     if (!token) {
-        s.reply(`使用'set ALAPI Token *****'设置Token`)
+        s.reply('使用`set ALAPI Token *****`设置Token')
         return
     } else {
         data.order = order
