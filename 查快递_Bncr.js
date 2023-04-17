@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 查快递
  * @origin 大灰机
- * @version 1.0.0
+ * @version 1.0.1
  * @description 查询快递
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(快递|查快递)$
@@ -16,19 +16,20 @@
 查询快递token注册地址(https://admin.alapi.cn/user/register)
  */
 
+const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 const axios = require("axios")
-
-const token = ``
+const sysdb = new BncrDB('ALAPI')
 const api_kd = `https://v2.alapi.cn/api/kd`
 
 module.exports = async s => {
+    token = await sysdb.get('Token') || ``  // 可以通过'set ALAPI Token *****'设置Token，或者在此行的||后面填入Token
     let fold = true         // 折叠
-    let order = `asc`       // 查询结果排序方式[desc, asc]
+    let order = `desc`      // 查询结果排序方式[desc, asc]
     msg_wait = 2
 
     let data = {}
     if (!token) {
-        s.reply(`token空`)
+        s.reply(`使用'set ALAPI Token *****'设置Token`)
         return
     } else {
         data.order = order
@@ -38,7 +39,7 @@ module.exports = async s => {
         data.number = s.param(2)
     } else {
         s.delMsg(s.getMsgId())
-        if (number = await dialogue(s, `快递单号`)) {
+        if (number = await mo.dialogue(s, `快递单号`)) {
             data.number = number
         } else {
             return
@@ -47,12 +48,12 @@ module.exports = async s => {
     if (date = (await post(api_kd, data)).data) {
         if (date.code == 200 && date.data && date.data.info.length > 0) {
             let msgid = await s.reply(kd_msg(date.data, fold))
-            if (await dialogue(s, `Y展开`) == (`y` || `Y`)) {
+            if ((msg = await mo.dialogue(s, `Y展开`, 10)) && (msg == `y` || msg == `Y`)) {
                 s.delMsg(msgid, { wait: 10 })
                 s.reply(kd_msg(date.data, false))
             }
         } else if (date.code == 422) {
-            if (com = getCodeByMsg(await dialogue(s, `快递公司（有字母则大写）`))) {
+            if (com = getCodeByMsg(await mo.dialogue(s, `快递公司（有字母则大写）`))) {
                 data.com = com
             } else {
                 return
@@ -60,7 +61,7 @@ module.exports = async s => {
             if (date = (await post(api_kd, data)).data) {
                 if (date.code == 200 && date.data && date.data.info.length > 0) {
                     let msgid = await s.reply(kd_msg(date.data, fold))
-                    if (await dialogue(s, `输入Y展开`) == (`y` || `Y`)) {
+                    if ((msg = await mo.dialogue(s, `Y展开`, 10)) && (msg == `y` || msg == `Y`)) {
                         s.delMsg(msgid, { wait: 10 })
                         s.reply(kd_msg(date.data, false))
                     }
@@ -101,17 +102,6 @@ function getCodeByMsg(msg, reverse) {
         }
     }
     return null;
-}
-
-async function dialogue(s, tip) {
-    first = await s.reply({ msg: `输入${tip}`, type: `text`, dontEdit: true });
-    //内容
-    let content = await s.waitInput(() => { }, 30)
-    if (content === null) return s.delMsg(await s.reply({ msg: '超时已退出', type: `text`, dontEdit: true }), first, { wait: msg_wait });
-    if (content.getMsg() === 'q') return s.delMsg(await s.reply({ msg: '已退出', type: `text`, dontEdit: true }), first, content.getMsgId(), { wait: msg_wait });
-    //撤回用户发的信息
-    s.delMsg(content.getMsgId(), first);
-    return content.getMsg()
 }
 
 // post请求
