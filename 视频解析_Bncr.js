@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 短视频解析
  * @origin 大灰机
- * @version 1.0.5
+ * @version 1.0.6
  * @description 多个视频解析，目前支持抖音、哔哩哔哩
  * 
  * 抖音
@@ -17,13 +17,14 @@
  * @disable false
  */
 
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
+/**
+说明：
+短视频解析app_id和app_secret申请地址(https://www.mxnzp.com/)
+ */
 
-// app_id和app_secret去https://www.mxnzp.com/申请，填在下方
-const app_id = ``
-const app_secret = ``
+const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
+const axios = require('axios');
+const sysdb = new BncrDB('MXNZP')
 
 // 短链接生成API
 const short_url = `https://xiaoapi.cn/API/dwz.php?url=`
@@ -34,14 +35,28 @@ const bilibili_api_url = ` https://www.mxnzp.com/api/bilibili/video`
 
 
 module.exports = async s => {
+    app_id = await sysdb.get('app_id') || ``            // 可以通过'set MXNZP app_id *****'设置，或者在此行的||后面填入app_id
+    app_secret = await sysdb.get('app_secret') || ``    // 可以通过'set MXNZP app_secret *****'设置，或者在此行的||后面填入app_secret
+    if (!(app_id || app_secret)) {
+        s.reply('使用`set MXNZP app_id *****`设置app_id\n使用`set MXNZP app_secret *****`设置app_secret后使用')
+        return
+    }
     tail = `?url=${btoa(s.param(1))}&app_id=${app_id}&app_secret=${app_secret}`
     await s.reply(`正在解析`)
     if (s.param(1).includes(`douyin`)) {
         content = await douyin()
-        await send(s, content.msg, content.video)
+        await mo.sendMsg(s, {
+            type: `video`,
+            msg,
+            path: video
+        })
     } else if (s.param(1).includes(`bilibili`) || s.param(1).includes(`b23`)) {
         content = await bilibili()
-        await send(s, content.msg, content.video)
+        await mo.sendMsg(s, {
+            type: `video`,
+            msg,
+            path: video
+        })
     }
 }
 
@@ -52,6 +67,7 @@ async function douyin() {
             msg: `解析失败`
         }
     }
+    console.log(data);
     video = data.url
     msg = `抖音解析成功\n `
     msg += `\n标题：${data.title}`
@@ -72,6 +88,7 @@ async function bilibili() {
             msg: `解析失败`
         }
     }
+    console.log(data);
     video = data.list[0].url
     msg = `哔哩哔哩解析成功\n `
     msg += `\n标题：${data.title}`
@@ -93,79 +110,4 @@ async function get(url) {
     if (data.status === 200) {
         return data.data
     }
-}
-
-async function send(s, msg, video) {
-    if (['HumanTG'].includes(s.getFrom())) {
-        (msgid = await s.reply({
-            type: 'video',
-            path: video,
-            msg: msg,
-        })) && await s.delMsg(s.getMsgId());
-        if (!msgid) {
-            await s.reply(`视频发送失败`)
-            await sysMethod.sleep(1)
-            await s.reply(msg)
-            open = false;
-            (video = await downloadFile(video)), open = true;   /* 存储视频 */
-            if (await s.reply({
-                type: 'video',
-                path: video,
-                msg: msg,
-            })) {
-                await s.delMsg(s.getMsgId());
-                open && fs.unlinkSync(video);
-            }
-        }
-    } else {
-        await s.reply(msg)
-        await s.reply({
-            type: 'video',
-            path: video,
-        })
-    }
-}
-
-// 时间戳转换
-function time(t, l) {
-    var num = Number(t)
-    // 时间戳长度
-    var v = num.toString().length
-    if (v == 10) {
-        var Data = new Date(num * 1000)// 十位需要乘1000，十三位可以直接用
-    } else if (v == 13) {
-        var Data = new Date(num)// 十位需要乘1000，十三位可以直接用
-    } else {
-        // console.log(`时间戳值异常`)
-        return t
-    }
-    if (!l) {
-        var l = ``
-    }
-    if (l == `1`) {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月${Data.getDate()}日${Data.getHours()}:${Data.getMinutes()}:${Data.getSeconds()}`
-    } else if (l == `2`) {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月${Data.getDate()}日${Data.getHours()}:${Data.getMinutes()}分`
-    } else if (l == `3`) {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月${Data.getDate()}日${Data.getHours()}时`
-    } else if (l == `4`) {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月${Data.getDate()}日`
-    } else if (l == `5`) {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月`
-    } else if (l == `6`) {
-        var time = `${Data.getFullYear()}年`
-    } else {
-        var time = `${Data.getFullYear()}年${Data.getMonth() + 1}月${Data.getDate()}日${Data.getHours()}:${Data.getMinutes()}:${Data.getSeconds()}`
-    }
-    return time
-}
-
-async function downloadFile(url, filename = new Date().getTime()) {
-    filePath = path.join(process.cwd(), 'BncrData/public', `${filename}.mp4`);
-    response = await axios.get(url, { responseType: 'stream' });
-    response.data.pipe(fs.createWriteStream(filePath));
-    return new Promise((resolve, reject) => {
-        response.data.on('end', () => resolve(filePath));
-        response.data.on('error', reject);
-    });
 }
