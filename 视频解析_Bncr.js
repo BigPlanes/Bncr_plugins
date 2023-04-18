@@ -2,16 +2,13 @@
  * @author 薛定谔的大灰机
  * @name 短视频解析
  * @origin 大灰机
- * @version 1.0.6
+ * @version 1.0.7
  * @description 多个视频解析，目前支持抖音、哔哩哔哩
- * 
  * 抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
- * 
  * 哔哩哔哩
  * @rule (http.?://.*b23\.tv/\S+/?)
  * @rule (http.?://\S+.bilibili\.com/\S+/?)
- * 
  * @priority 9999
  * @admin false
  * @disable false
@@ -42,22 +39,15 @@ module.exports = async s => {
         return
     }
     tail = `?url=${btoa(s.param(1))}&app_id=${app_id}&app_secret=${app_secret}`
-    await s.reply(`正在解析`)
+    s.delMsg(await s.reply(`正在解析`), { wait: 5})
     if (s.param(1).includes(`douyin`)) {
         content = await douyin()
-        await mo.sendMsg(s, {
-            type: `video`,
-            msg,
-            path: video
-        })
     } else if (s.param(1).includes(`bilibili`) || s.param(1).includes(`b23`)) {
         content = await bilibili()
-        await mo.sendMsg(s, {
-            type: `video`,
-            msg,
-            path: video
-        })
+    } else {
+        content = `不知道啥问题，请找开发者`
     }
+    await mo.sendMsg(s, content)
 }
 
 async function douyin() {
@@ -67,7 +57,6 @@ async function douyin() {
             msg: `解析失败`
         }
     }
-    console.log(data);
     video = data.url
     msg = `抖音解析成功\n `
     msg += `\n标题：${data.title}`
@@ -75,20 +64,24 @@ async function douyin() {
     msg += `\n分辨率：${data.accept}`
     msg += `\n视频：${await get(`${short_url}${data.url}`)}`
     return {
-        video,
-        msg
+        type: `video`,
+        msg: msg,
+        path: {
+            path: video,
+            suffix: `mp4`,
+        },
     }
 }
 
 
 async function bilibili() {
     if (!(data = (await get(bilibili_api_url + tail)).data)) {
+    	console.log(data)
         return {
             video: ``,
             msg: `解析失败`
         }
     }
-    console.log(data);
     video = data.list[0].url
     msg = `哔哩哔哩解析成功\n `
     msg += `\n标题：${data.title}`
@@ -96,8 +89,12 @@ async function bilibili() {
     msg += `\n分辨率：${data.list[0].accept}`
     msg += `\n视频：${await get(`${short_url}${data.list[0].url}`)}`
     return {
-        video,
-        msg
+        type: `video`,
+        msg: msg,
+        path: {
+            path: video,
+            suffix: `mp4`,
+        },
     }
 }
 
