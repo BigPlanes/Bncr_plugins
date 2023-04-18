@@ -1,7 +1,18 @@
+/**
+ * @title subassembly-开发
+ * @create_at 2033-11-30 10:12:09
+ * @description 方便开发
+ * @author 薛定谔的大灰机
+ * @origin 大灰机
+ * @version v1.0.0
+ * @module true
+ * @encrypt false
+ * @public false
+ */
 const axios = require('axios')
 const fs = require('fs')
 const _path = require('path')
-
+const system = new BncrDB('system')
 
 module.exports = {
     downloadFile,
@@ -42,32 +53,42 @@ async function dialogue(s, tip, wait) {
     return content.getMsg()
 }
 
-// 发送消息
-async function sendMsg(s, content, download) {
-    type = content?.type
-    path = content?.path
-    msg = content?.msg
-    dontEdit = content?.dontEdit
-    if (['HumanTG'].includes(s.getFrom())) {
-        (msgid = await s.reply({
+// 发送消息,自动判断平台并缓存到本地再发送
+async function sendMsg(s, content) {
+    type = content?.type || `text`
+    msg = content?.msg || content
+    path = content.path?.path || ``
+    suffix = content.path?.suffix
+    dontEdit = content.path?.dontEdit
+    download = content.path?.download
+    async function down() {
+        temporary = await s.reply(msg)
+        open = false;
+        (path = await downloadFile(path, suffix)), open = true;   /* 存储视频 */
+        if (msgid = await s.reply({
             type: type,
             path: path,
             msg: msg,
-        })) && await s.delMsg(s.getMsgId());
-        if (!msgid || download) {
-            // await s.reply(`文件发送失败`)
-            // await sysMethod.sleep(1)
-            await s.reply(msg)
-            open = false;
-            (path = await downloadFile(path)), open = true;   /* 存储视频 */
-            if (await s.reply({
-                type: type,
-                path: path,
-                msg: msg,
-            })) {
-                await s.delMsg(s.getMsgId());
-                open && fs.unlinkSync(video);
-            }
+        })) {
+            s.delMsg(temporary)
+            open && fs.unlinkSync(path);
+        }
+    }
+    if (download) {
+        await down()
+    } else if (['qq'].includes(s.getFrom())) {
+        await s.reply(msg)
+        await s.reply({
+            type: type,
+            path: await system.get('Host') + (await downloadFile(path, `mp4`)).match(/\/public.*/g),
+        })
+    } else if (['HumanTG'].includes(s.getFrom())) {
+        if (!(msgid = await s.reply({
+            type: type,
+            path: path,
+            msg: msg,
+        }))) {
+            await down()
         }
     } else {
         await s.reply(msg)
@@ -79,8 +100,8 @@ async function sendMsg(s, content, download) {
 }
 
 // 下载文件
-async function downloadFile(url, filename = new Date().getTime()) {
-    filePath = _path.join(process.cwd(), 'BncrData/public', `${filename}.jpg`);
+async function downloadFile(url, suffix, filename = new Date().getTime()) {
+    filePath = _path.join(process.cwd(), 'BncrData/public', `${filename}.${suffix}`);
     response = await axios.get(url, { responseType: 'stream' });
     response.data.pipe(fs.createWriteStream(filePath));
     return new Promise((resolve, reject) => {
