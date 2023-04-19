@@ -4,7 +4,7 @@
  * @description 方便开发
  * @author 薛定谔的大灰机
  * @origin 大灰机
- * @version v1.0.0
+ * @version v1.0.1
  * @module true
  * @encrypt false
  * @public false
@@ -42,12 +42,12 @@ async function request(options) {
 
 // 对话
 async function dialogue(s, tip, wait) {
-    !wait && (wait = 60);
-    first = await s.reply({ msg: `输入${tip}`, type: `text`, dontEdit: true });
+    !wait && (wait = 2);
+    first = await s.reply({ msg: `${tip}`, type: `text`, dontEdit: true });
     //内容
-    let content = await s.waitInput(() => { }, wait)
-    if (content === null) return s.delMsg(await s.reply({ msg: '超时已退出', type: `text`, dontEdit: true }), first, { wait: msg_wait });
-    if (content.getMsg() === 'q') return s.delMsg(await s.reply({ msg: '已退出', type: `text`, dontEdit: true }), first, content.getMsgId(), { wait: msg_wait });
+    let content = await s.waitInput(() => { }, 120)
+    if (content === null) return s.delMsg(await s.reply({ msg: '超时已退出', type: `text`, dontEdit: true }), first, { wait });
+    if (content.getMsg() === 'q') return s.delMsg(await s.reply({ msg: '已退出', type: `text`, dontEdit: true }), first, content.getMsgId(), { wait });
     //撤回用户发的信息
     s.delMsg(content.getMsgId(), first);
     return content.getMsg()
