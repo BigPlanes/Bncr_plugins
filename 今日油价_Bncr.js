@@ -9,9 +9,12 @@
  * @rule ^油价([^ \n]+)$
  * @priority 1
  * @admin false
- * @disable false
+ * @disable true
  */
 
+/**
+ *接口可能不准
+ */
 
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 const axios = require('axios');
