@@ -4,7 +4,7 @@
  * @description 方便开发
  * @author 薛定谔的大灰机
  * @origin 大灰机
- * @version v1.0.1
+ * @version v1.0.2
  * @module true
  * @encrypt false
  * @public false
@@ -16,9 +16,9 @@ const system = new BncrDB('system')
 
 module.exports = {
     downloadFile,
-    dialogue,
     request,
-    sendMsg,
+    reply,
+    again,
     time,
 }
 
@@ -41,20 +41,20 @@ async function request(options) {
 }
 
 // 对话
-async function dialogue(s, tip, wait) {
-    !wait && (wait = 2);
+async function again(s, tip, wait) {
+    !wait && (wait = 120);
     first = await s.reply({ msg: `${tip}`, type: `text`, dontEdit: true });
     //内容
-    let content = await s.waitInput(() => { }, 120)
-    if (content === null) return s.delMsg(await s.reply({ msg: '超时已退出', type: `text`, dontEdit: true }), first, { wait });
-    if (content.getMsg() === 'q') return s.delMsg(await s.reply({ msg: '已退出', type: `text`, dontEdit: true }), first, content.getMsgId(), { wait });
+    let content = await s.waitInput(() => { }, wait)
+    if (content === null) return s.delMsg(await s.reply({ msg: '超时已退出', type: `text`, dontEdit: true }), first, { wait: 2 });
+    if (content.getMsg() === 'q') return s.delMsg(await s.reply({ msg: '已退出', type: `text`, dontEdit: true }), s.getMsgId(), first, content.getMsgId(), { wait: 2 });
     //撤回用户发的信息
     s.delMsg(content.getMsgId(), first);
     return content.getMsg()
 }
 
 // 发送消息,自动判断平台并缓存到本地再发送
-async function sendMsg(s, content) {
+async function reply(s, content) {
     type = content?.type || `text`
     msg = content?.msg || content
     path = content.path?.path || ``
