@@ -2,12 +2,12 @@
  * @author 薛定谔的大灰机
  * @name 机场签到
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @description 每日GlaDOS签到(每签到一次续杯一天，理论无限续杯)
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
- * @rule ^(机场|鸡场)(签到|重置|增加|删除)$
+ * @rule ^(机场|鸡场)(签到|推送|管理|重置)$
  * @admin true
- * @cron 0 0 8,20 * * *
+ * @cron 10 14 14,20 * * *
  * @disable false
  */
 
@@ -21,44 +21,64 @@ const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，�
 const sysdb = new BncrDB('GlaDOS')
 
 module.exports = async s => {
-    sign_in_sleep = 1   // 每个账号签到之间的间隔时间
-    wait = 2            // 设置成功，重置成功等提示消息的撤回时间
-
     switch (s.param(2)) {
         case '签到':
             main(s, (await sysdb.get(s.getUserId()))?.Cookie)
             break;
+        case '推送':
+            push(s, true)
+            break;
+        case '管理':
+            manage(s)
+            break;
         case '重置':
-            s.delMsg(await s.reply(await reset(s.getUserId())), { wait })
-            break;
-        case '增加':
-            break;
-        case '删除':
+            s.delMsg(await s.reply(await reset(s.getUserId())), { wait: 2 })
             break;
         default:
             console.log(`定时执行`);
-            for (let i = 0, Cookies = await sysdb.keys(); i < Cookies.length; i++) {
-                console.log(await main(s, (await sysdb.get(Cookies[i]))?.Cookie))
-            }
+            push(s)
             break;
     }
 }
 
 async function main(s, Cookie) {
-    if (Cookie) {
+    if (Cookie && Cookie.length > 0) {
         s.delMsg(s.getMsgId())
         for (let i = 0; i < Cookie.length; i++) {
-            msg = await sign_in(Cookie[i])
-            s.reply({
-                msg: msg,
-                type: `text`,
-                dontEdit: true
-            })
-            await sysMethod.sleep(sign_in_sleep)
+            sign_in(s, Cookie[i])
         }
         return msg
     } else {
         await set(s)
+    }
+}
+
+// 管理
+async function manage(s) {
+    s.delMsg(s.getMsgId())
+    if (!await sysdb.get(s.userId)) return set(s)
+    param = await mo.again(s, `请选择序号：\n1：推送(修改推送)\n2：新增(原有基础上增加一个Cookie)\n3：删除(原有基础上删除一个Cookie)\n4：重置(删除你录入的全部坤场Cookie)`)
+    switch (param) {
+        case '推送':
+        case '1':
+            push(s)
+            break;
+        case '新增':
+        case '2':
+            add(s)
+            break;
+        case '删除':
+        case '3':
+            del(s)
+            break;
+        case '重置':
+        case '4':
+            s.delMsg(await s.reply(await reset(s.getUserId())), { wait: 2 })
+            break;
+        default:
+            console.log(`退出`)
+            return
+            break;
     }
 }
 
@@ -71,20 +91,21 @@ async function set(s) {
         ],
         "param": {
             "From": {},
-            "Push": {},
+            "Push": false,
             "Cookie": [],
         }
     };
     for (let i = 0; i < set_json.tip.length; i++) {
-        if (values = await mo.dialogue(s, set_json.tip[i], wait)) {
-            if (i === 0) set_json.param.Cookie = values.split(`&`)
-            if (i === 1) set_json.param.Push = values
+        if (Cookies = await mo.again(s, set_json.tip[i])) {
+            if (i === 0) set_json.param.Cookie = Cookies.split(`&`)
+            if (!set_json.param.Push && i === 1 && ['y', 'Y'].includes(Cookies)) set_json.param.Push = true
+
         } else {
             return
         }
     };
     set_json.param.From = s.getFrom()
-    s.delMsg(await s.reply(await sysdb.set(s.getUserId(), set_json.param, { def: '设置成功' })), { wait }) && main(s, (await sysdb.get(s.getUserId()))?.Cookie);   // 值
+    s.delMsg(await s.reply(await sysdb.set(s.getUserId(), set_json.param, { def: '设置成功' })), { wait: 2 }) && main(s, (await sysdb.get(s.getUserId()))?.Cookie);   // 值
 }
 
 // 重置参数
@@ -93,8 +114,86 @@ async function reset(key) {
     return await sysdb.get(key, '重置成功')
 }
 
+// 增加
+async function add(s) {
+    let value = await sysdb.get(s.getUserId())
+    if (Cookie = value?.Cookie) {
+        let param = {
+            Cookie
+        }
+        if (Cookies = await mo.again(s, `当前存在${Cookie.length}个Cookie\n输入Cookie(多个用&分割)`)) {
+            for (let i = 0; i < Cookies.split(`&`).length; i++) {
+                param.Cookie[Cookie.length] = Cookies.split(`&`)[i]
+            }
+            s.reply(`新增${Cookies.split(`&`).length}条Cookie${await sysdb.set(s.getUserId(), value, { def: '成功' })}`)
+        } else {
+            return
+        }
+    } else {
+        set(s)
+    }
+
+}
+
+// 删除
+async function del(s) {
+    let value = await sysdb.get(s.getUserId())
+    if (Cookie = value?.Cookie) {
+        if (Cookie.length < 1) return s.delMsg(await s.reply(`Cookie为空`), { wait: 2 }), set(s)
+        s.delMsg(await s.reply(`当前存在${Cookie.length}个Cookie`), { wait: 2 })
+        if (Cookies = await mo.again(s, `请选择删除第几条`)) {
+            delete Cookie[Cookies - 1]
+            s.delMsg(await s.reply(`删除第${Cookies}条Cookie${await sysdb.set(s.getUserId(), value, { def: '成功' })}`), { wait: 2 })
+        } else {
+            return
+        }
+    } else {
+        set(s)
+    }
+
+}
+
+// 推送
+async function push(s, noedit) {
+    s.delMsg(s.getMsgId())
+    if ((await s.getFrom() == `cron`) || noedit) {
+        if (await s.isAdmin()) coercive = true
+        for (let i = 0, values = await sysdb.keys(); i < values.length; i++) {
+            if ((value = await sysdb.get(values[i])) && value.Cookie.length > 0) {
+                if (coercive || value.Push) {
+                    for (let j = 0; j < value.Cookie.length; j++) {
+                        // msg = `form：${(await sysdb.get(values[i])).From}`
+                        // msg += `\nuserId：${values[i]}`
+                        // console.log(msg);
+                        await sysMethod.push({
+                            platform: (await sysdb.get(values[i])).From,
+                            userId: values[i],
+                            msg: await sign_in(s, value.Cookie[j], true),
+                            type: 'text',
+                        });
+                        await sysMethod.sleep(1);
+                    }
+                } else {
+                    main(s, value.Cookie)
+                }
+            }
+        }
+    } else {
+        if (value = await sysdb.get(s.getUserId())) {
+            if (['Y', `y`].includes(msg = await mo.again(s, `当前状态为：${value.Push ? `"推送"` : `"不推送"`}\n输入Y切换状态(不区分大小写)`))) {
+                if (value.Push == false) value.Push = true
+                else if (value.Push == true) value.Push = false
+                s.delMsg(await s.reply(`设置状态为${value.Push ? `"推送"` : `"不推送"`}${await sysdb.set(s.getUserId(), value, { def: '成功' })}`), { wait: 3 })
+            } else {
+                s.delMsg(await s.reply(`退出`), { wait: 2 })
+            }
+        }
+    }
+
+}
+
 // 签到
-async function sign_in(Cookie) {
+async function sign_in(s, Cookie, push) {
     vip = {
         10: "5GB",
         21: "200GB",
@@ -139,12 +238,17 @@ async function sign_in(Cookie) {
             msg += `已用流量：${traffic}\n`
             msg += `签到结果：${data.message}\n`
             msg += `签到时间：${time}\n`
-            return msg
         } else {
             console.log(`\n${Cookie}`, data)
-            return `${data.message}\n检查Cookie\n重置后再试`
+            msg = `${data.message}\n检查Cookie\n重置后再试`
         }
     } else {
-        return `查询出错，Cookie可能错误\n重置后再试`
+        msg = `查询出错，Cookie可能错误\n重置后再试`
     }
+    if (push) return msg
+    else s.reply({
+        msg: msg,
+        type: `text`,
+        dontEdit: true
+    });
 }
