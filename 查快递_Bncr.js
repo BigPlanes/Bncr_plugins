@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 查快递
  * @origin 大灰机
- * @version 1.0.2
+ * @version 1.0.3
  * @description 查询快递
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(快递|查快递)$
@@ -39,7 +39,7 @@ module.exports = async s => {
         data.number = s.param(2)
     } else {
         s.delMsg(s.getMsgId())
-        if (number = await mo.dialogue(s, `快递单号`)) {
+        if (number = await mo.again(s, `快递单号`)) {
             data.number = number
         } else {
             return
@@ -48,12 +48,12 @@ module.exports = async s => {
     if (date = (await post(api_kd, data)).data) {
         if (date.code == 200 && date.data && date.data.info.length > 0) {
             let msgid = await s.reply(kd_msg(date.data, fold))
-            if ((msg = await mo.dialogue(s, `输入Y展开`)) && (msg == `y` || msg == `Y`)) {
+            if ((msg = await mo.again(s, `输入Y展开`)) && (msg == `y` || msg == `Y`)) {
                 s.delMsg(msgid, { wait: 10 })
                 s.reply(kd_msg(date.data, false))
             }
         } else if (date.code == 422) {
-            if (com = getCodeByMsg(await mo.dialogue(s, `快递公司（有字母则大写）`))) {
+            if (com = getCodeByMsg(await mo.again(s, `快递公司（有字母则大写）`))) {
                 data.com = com
             } else {
                 return
@@ -61,7 +61,7 @@ module.exports = async s => {
             if (date = (await post(api_kd, data)).data) {
                 if (date.code == 200 && date.data && date.data.info.length > 0) {
                     let msgid = await s.reply(kd_msg(date.data, fold))
-                    if ((msg = await mo.dialogue(s, `Y展开`)) && (msg == `y` || msg == `Y`)) {
+                    if ((msg = await mo.again(s, `Y展开`)) && (msg == `y` || msg == `Y`)) {
                         s.delMsg(msgid, { wait: 10 })
                         s.reply(kd_msg(date.data, false))
                     }
