@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 短视频解析
  * @origin 大灰机
- * @version 1.0.7
+ * @version 1.0.8
  * @description 多个视频解析，目前支持抖音、哔哩哔哩
  * 抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
@@ -47,7 +47,7 @@ module.exports = async s => {
     } else {
         content = `不知道啥问题，请找开发者`
     }
-    await mo.sendMsg(s, content)
+    await mo.reply(s, content)
 }
 
 async function douyin() {
@@ -75,13 +75,14 @@ async function douyin() {
 
 
 async function bilibili() {
-    if (!(data = (await get(bilibili_api_url + tail)).data)) {
+    if (!(data = (await get(bilibili_api_url + tail)).data) || (data.list.length == 0)) {
     	console.log(data)
         return {
             video: ``,
             msg: `解析失败`
         }
     }
+    console.log(data);
     video = data.list[0].url
     msg = `哔哩哔哩解析成功\n `
     msg += `\n标题：${data.title}`
