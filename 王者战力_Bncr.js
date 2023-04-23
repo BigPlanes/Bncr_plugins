@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 王者战力
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @description 查询王者战力
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^王者战力$
@@ -53,7 +53,7 @@ module.exports = async s => {
         path = ``
     };
     // console.log(msg);
-    await mo.sendMsg(s, {
+    await mo.reply(s, {
         type: `image`,
         msg: msg,
         path: {
