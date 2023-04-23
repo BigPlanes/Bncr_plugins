@@ -2,19 +2,16 @@
  * @author 薛定谔的大灰机
  * @name 今日油价
  * @origin 大灰机
- * @version 1.0.0
+ * @version 1.0.1
  * @description 查询今日油价
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^([^ \n]+)油价$
  * @rule ^油价([^ \n]+)$
- * @priority 1
+ * @priority 0
  * @admin false
- * @disable true
+ * @disable false
  */
 
-/**
- *接口可能不准
- */
 
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 const axios = require('axios');
@@ -46,6 +43,6 @@ module.exports = async s => {
         } else {
             msg = body.msg
         }
-        mo.sendMsg(s, msg)
+        mo.reply(s, msg)
     }
 }
