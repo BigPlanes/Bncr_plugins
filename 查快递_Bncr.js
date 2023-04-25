@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 查快递
  * @origin 大灰机
- * @version 1.0.3
+ * @version 1.0.4
  * @description 查询快递
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(快递|查快递)$
@@ -18,23 +18,26 @@
 
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 const axios = require("axios")
-const sysdb = new BncrDB('ALAPI')
+const sysdb = new BncrDB('API')
 const api_kd = `https://v2.alapi.cn/api/kd`
+const fold = true       // 折叠
 
 module.exports = async s => {
-    token = await sysdb.get('Token') || ``  // 可以通过`set ALAPI Token *****`设置Token，或者在此行的||后面填入Token
-    let fold = true         // 折叠
+    token = (await sysdb.get('ALAPI'))?.Token || ``  // 可以通过`set ALAPI Token *****`设置Token，或者在此行的||后面填入Token
     let order = `desc`      // 查询结果排序方式[desc, asc]
-    msg_wait = 2
 
-    let data = {}
-    if (!token) {
-        s.reply('使用`set ALAPI Token *****`设置Token')
-        return
-    } else {
-        data.order = order
-        data.token = token
+    let data = {
+        order,
+        token,
     }
+    if (!token) {
+        set(s, data)
+    } else {
+        main(s, data)
+    }
+
+}
+async function main(s, data) {
     if (s.param(2)) {
         data.number = s.param(2)
     } else {
@@ -69,6 +72,27 @@ module.exports = async s => {
                     s.reply(date.msg)
                 }
             }
+        }
+    }
+}
+
+async function set(s, data) {
+    set_json = {
+        "TIP": [
+            "输入ALAPI_Token",
+        ],
+        "param": {
+            "Token": ""
+        }
+    }
+    for (let i = 0; i < set_json.TIP.length; i++) {
+        if (api_key = await mo.again(s, set_json.TIP[i])) {
+            set_json.param.Token = api_key
+            s.delMsg(await s.reply(await sysdb.set('ALAPI', set_json.param, { def: '设置成功' })), { wait: 2 })
+            data.token = api_key
+            main(s, data)
+        } else {
+            return
         }
     }
 }
