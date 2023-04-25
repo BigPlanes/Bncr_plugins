@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 今日油价
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @description 查询今日油价
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^([^ \n]+)油价$
@@ -12,21 +12,29 @@
  * @disable false
  */
 
+/**
+说明：
+app_id和app_secret申请地址(https://www.mxnzp.com/)
+ */
 
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 const axios = require('axios');
-const sysdb = new BncrDB('MXNZP')
+const sysdb = new BncrDB('API')
 
 // 油价查询API
 const api = 'https://www.mxnzp.com/api/oil/search'
 
 module.exports = async s => {
-    app_id = await sysdb.get('app_id') || ``            // 可以通过'set MXNZP app_id *****'设置，或者在此行的||后面填入app_id
-    app_secret = await sysdb.get('app_secret') || ``    // 可以通过'set MXNZP app_secret *****'设置，或者在此行的||后面填入app_secret
-    if (!(app_id || app_secret)) {
-        s.reply('使用`set MXNZP app_id *****`设置app_id\n使用`set MXNZP app_secret *****`设置app_secret后使用')
-        return
+    if (Token = await sysdb.get('MXNZP')) {
+        main(s, Token)
+    } else {
+        set(s)
     }
+}
+
+async function main(s, Token) {
+    app_id = Token.app_id
+    app_secret = Token.app_secret
     if (body = (await mo.request({
         url: `${api}?province=${encodeURI(s.param(1))}&app_id=${app_id}&app_secret=${app_secret}`,
         method: `get`
@@ -45,4 +53,31 @@ module.exports = async s => {
         }
         mo.reply(s, msg)
     }
+}
+
+async function set(s) {
+    set_json = {
+        "TIP": [
+            "输入app_id (MXNZP)",
+            "输入app_secret (MXNZP)",
+        ],
+        "name":[
+            "app_id",
+            "app_secret",
+        ],
+        "param": {
+            "app_id": "",
+            "app_secret": "",
+        }
+    }
+    for (let i = 0; i < set_json.TIP.length; i++) {
+        if (api_key = await mo.again(s, set_json.TIP[i])) {
+            set_json.param[set_json.name[i]] = api_key
+            s.delMsg(await s.reply(await sysdb.set('MXNZP', set_json.param, { def: '设置成功' })), { wait: 2 })
+        } else {
+            return
+        }
+    }
+    console.log(set_json.param);
+    main(s, set_json.param)
 }
