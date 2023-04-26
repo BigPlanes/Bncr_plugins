@@ -4,7 +4,7 @@
  * @description 方便开发
  * @author 薛定谔的大灰机
  * @origin 大灰机
- * @version v1.0.2
+ * @version v1.0.3
  * @module true
  * @encrypt false
  * @public false
@@ -29,6 +29,7 @@ async function request(options) {
         url: options.url,
         method: options?.method || 'GET',
         data: options?.data || {},
+        params: options?.params || {},      // 访问时的拼接参数
         headers: options?.headers || {},
         responseType: options?.responseType || "",
         timeout: options?.timeout || 15000,
@@ -58,7 +59,7 @@ async function reply(s, content) {
     type = content?.type || `text`
     msg = content?.msg || content
     path = content.path?.path || ``
-    suffix = content.path?.suffix
+    suffix = content.path?.suffix       // 文件后缀
     dontEdit = content.path?.dontEdit
     download = content.path?.download
     async function down() {
@@ -82,6 +83,8 @@ async function reply(s, content) {
             type: type,
             path: await system.get('Host') + (await downloadFile(path, `mp4`)).match(/\/public.*/g),
         })
+        await sysMethod.sleep(15);
+        fs.unlinkSync(path);
     } else if (['HumanTG'].includes(s.getFrom())) {
         if (!(msgid = await s.reply({
             type: type,
