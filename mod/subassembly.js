@@ -4,7 +4,7 @@
  * @description 方便开发
  * @author 薛定谔的大灰机
  * @origin 大灰机
- * @version v1.0.3
+ * @version v1.0.4
  * @module true
  * @encrypt false
  * @public false
@@ -13,6 +13,7 @@ const axios = require('axios')
 const fs = require('fs')
 const _path = require('path')
 const system = new BncrDB('system')
+const { randomUUID } = require('crypto');
 
 module.exports = {
     downloadFile,
@@ -24,7 +25,7 @@ module.exports = {
 
 // 请求
 async function request(options) {
-    if (!options?.url) throw new Error('url is required')
+    if (!options?.url) throw new Error('网址为必填项')
     var data = await axios({
         url: options.url,
         method: options?.method || 'GET',
@@ -57,7 +58,11 @@ async function again(s, tip, wait) {
 // 发送消息,自动判断平台并缓存到本地再发送
 async function reply(s, content) {
     type = content?.type || `text`
-    msg = content?.msg || content
+    if (type === `text`) {
+        msg = content?.msg || content
+    } else {
+        msg = content?.msg || ``
+    }
     path = content.path?.path || ``
     suffix = content.path?.suffix       // 文件后缀
     dontEdit = content.path?.dontEdit
@@ -103,7 +108,7 @@ async function reply(s, content) {
 }
 
 // 下载文件
-async function downloadFile(url, suffix, filename = new Date().getTime()) {
+async function downloadFile(url, suffix, filename = randomUUID().split('-').join('')) {
     filePath = _path.join(process.cwd(), 'BncrData/public', `${filename}.${suffix}`);
     response = await axios.get(url, { responseType: 'stream' });
     response.data.pipe(fs.createWriteStream(filePath));
