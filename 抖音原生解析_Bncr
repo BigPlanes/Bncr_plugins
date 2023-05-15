@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 抖音原生解析
  * @origin 大灰机
- * @version 1.0.0
+ * @version 1.0.1
  * @description 视频解析，仅支持抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
  * @priority 9999
