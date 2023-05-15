@@ -2,13 +2,14 @@
  * @author 薛定谔的大灰机
  * @name 机场签到
  * @origin 大灰机
- * @version 1.0.2
+ * @version 1.0.4
  * @description 每日GlaDOS签到(每签到一次续杯一天，理论无限续杯)
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
- * @rule ^(机场|鸡场)(签到|推送|管理|重置)$
- * @admin true
- * @cron 10 14 14,20 * * *
+ * @rule ^(机场|鸡场)(登录|登陆|签到|推送|管理|重置)$
+ * @priority 1
+ * @admin false
  * @disable false
+ * @cron 0 0 6,22 * * *
  */
 
 /**
@@ -22,6 +23,10 @@ const sysdb = new BncrDB('GlaDOS')
 
 module.exports = async s => {
     switch (s.param(2)) {
+        case '登录':
+        case '登陆':
+            set(s)
+            break;
         case '签到':
             main(s, (await sysdb.get(s.getUserId()))?.Cookie)
             break;
@@ -64,8 +69,9 @@ async function manage(s) {
             push(s)
             break;
         case '新增':
+        case '增加':
         case '2':
-            add(s)
+            set(s)
             break;
         case '删除':
         case '3':
@@ -86,8 +92,29 @@ async function manage(s) {
 async function set(s) {
     set_json = {
         "tip": [
-            "输入Cookie(多个用&分割)",
+            "输入你的邮箱地址",
+            "输入验证码",
             "是否推送?\n不区分大小写(Y/N)",
+        ],
+        "options": [
+            {
+                "url": 'https://glados.rocks/api/authorization',
+                "method": "post",
+                "data": {
+                    "address": "",
+                    "site": "glados.network"
+                },
+            },
+            {
+                "url": 'https://glados.rocks/api/login',
+                "method": "post",
+                "data": {
+                    "method": "email",
+                    "site": "glados.network",
+                    "email": "",
+                    "mailcode": ""
+                },
+            }
         ],
         "param": {
             "From": {},
@@ -95,44 +122,35 @@ async function set(s) {
             "Cookie": [],
         }
     };
-    for (let i = 0; i < set_json.tip.length; i++) {
-        if (Cookies = await mo.again(s, set_json.tip[i])) {
-            if (i === 0) set_json.param.Cookie = Cookies.split(`&`)
-            if (!set_json.param.Push && i === 1 && ['y', 'Y'].includes(Cookies)) set_json.param.Push = true
-
-        } else {
-            return
-        }
-    };
     set_json.param.From = s.getFrom()
-    s.delMsg(await s.reply(await sysdb.set(s.getUserId(), set_json.param, { def: '设置成功' })), { wait: 2 }) && main(s, (await sysdb.get(s.getUserId()))?.Cookie);   // 值
+    for (let i = 0; i < set_json.tip.length; i++) {
+        if (text = await mo.again(s, set_json.tip[i])) {
+            (i == 0) && (set_json.options[0].data.address = set_json.options[1].data.email = text) && ((await mo.request(set_json.options[i])).data.code == 0);
+            if (i == 1) {
+                set_json.options[1].data.mailcode = text
+                data = await mo.request(set_json.options[i])
+                if (!data.data.code == 0) {
+                    return s.reply(data.data.message)
+                }
+            }
+            (i == 2) && (['y', 'Y'].includes(text)) && (set_json.param.Push = true);
+        } else return
+    }
+    let cookie = []
+    for (let i = 0, cookies = data.headers[`set-cookie`]; i < cookies.length; i++) {
+        cookie[i] = `${cookies[i].split(`;`)[0]};`
+    }
+    if (Cookie = (await sysdb.get(s.getUserId()))?.Cookie) {
+        set_json.param.Cookie = Cookie
+    }
+    set_json.param.Cookie[Cookie?.length || 0] = `${cookie[0]} ${cookie[1]} `
+    s.delMsg(await s.reply(await sysdb.set(s.getUserId(), set_json.param, { def: `ID:[${data.data.data.userId}]添加成功` })), { wait: 5 }) && main(s, (await sysdb.get(s.getUserId()))?.Cookie);
 }
 
 // 重置参数
 async function reset(key) {
     await sysdb.del(key);
     return await sysdb.get(key, '重置成功')
-}
-
-// 增加
-async function add(s) {
-    let value = await sysdb.get(s.getUserId())
-    if (Cookie = value?.Cookie) {
-        let param = {
-            Cookie
-        }
-        if (Cookies = await mo.again(s, `当前存在${Cookie.length}个Cookie\n输入Cookie(多个用&分割)`)) {
-            for (let i = 0; i < Cookies.split(`&`).length; i++) {
-                param.Cookie[Cookie.length] = Cookies.split(`&`)[i]
-            }
-            s.reply(`新增${Cookies.split(`&`).length}条Cookie${await sysdb.set(s.getUserId(), value, { def: '成功' })}`)
-        } else {
-            return
-        }
-    } else {
-        set(s)
-    }
-
 }
 
 // 删除
@@ -162,9 +180,6 @@ async function push(s, noedit) {
             if ((value = await sysdb.get(values[i])) && value.Cookie.length > 0) {
                 if (coercive || value.Push) {
                     for (let j = 0; j < value.Cookie.length; j++) {
-                        // msg = `form：${(await sysdb.get(values[i])).From}`
-                        // msg += `\nuserId：${values[i]}`
-                        // console.log(msg);
                         await sysMethod.push({
                             platform: (await sysdb.get(values[i])).From,
                             userId: values[i],
@@ -195,11 +210,11 @@ async function push(s, noedit) {
 // 签到
 async function sign_in(s, Cookie, push) {
     vip = {
-        10: "5GB",
-        21: "200GB",
-        31: "500GB",
-        41: "2000GB",
-        51: "5000GB",
+        10: 5,
+        21: 200,
+        31: 500,
+        41: 2000,
+        51: 5000,
     }
     let headers = {
         "Content-Type": "application/json;charset=UTF-8",
@@ -232,12 +247,16 @@ async function sign_in(s, Cookie, push) {
             else time = "暂无数据"
             if ((traffic = Number(status.data.traffic)) > 1073741824) traffic = `${((traffic) / 1073741824).toFixed(2)}GB`
             else traffic = `${(traffic / 1048576).toFixed(2)}MB`
-            msg = `用户ID：${data.list[0].user_id}\n`
-            msg += `剩余天数：${Number(status.data.leftDays)}天\n`
-            msg += `本月流量：${vip[status.data.vip]}\n`  // 通过vip级别对应的流量套餐
-            msg += `已用流量：${traffic}\n`
-            msg += `签到结果：${data.message}\n`
-            msg += `签到时间：${time}\n`
+            if ((remainder = vip[status.data.vip] * 1073741824 - status.data.traffic) > 1073741824) remainder = `${((remainder) / 1073741824).toFixed(2)}GB`
+            else remainder = `${((remainder) / 1048576).toFixed(2)}MB`
+            msg = `用户ID：${data.list[0].user_id}`
+            msg += `\n剩余天数：${Number(status.data.leftDays)}天`
+            msg += `\n本月流量：${vip[status.data.vip]}GB`  // 通过vip级别对应的流量套餐
+            msg += `\n已用流量：${traffic}`
+            msg += `\n剩余流量：${remainder}`
+            msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
+            msg += `\n签到结果：${data.message}`
+            msg += `\n签到时间：${time}`
         } else {
             console.log(`\n${Cookie}`, data)
             msg = `${data.message}\n检查Cookie\n重置后再试`
