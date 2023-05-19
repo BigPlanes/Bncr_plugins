@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.1
+ * @version 1.1.2
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)([0-9]+)$
@@ -235,7 +235,7 @@ module.exports = async s => {
         //撤回用户发的信息
         s.delMsg(content.getMsgId(), msgid_ids);
         if (get_msg = content.getMsg().match(/(\d+)([-\s])(\d+)/)) {
-            for (let i = get_msg[1]; i < get_msg[3]; i++) {
+            for (let i = get_msg[1]; i <= get_msg[3]; i++) {
                 await Redial(id[i - 1], i)
             }
         } else if ((get_msg = content.getMsg().split(',')).length > 1) {
