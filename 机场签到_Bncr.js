@@ -2,14 +2,14 @@
  * @author 薛定谔的大灰机
  * @name 机场签到
  * @origin 大灰机
- * @version 1.0.4
+ * @version 1.0.6
  * @description 每日GlaDOS签到(每签到一次续杯一天，理论无限续杯)
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(机场|鸡场)(登录|登陆|签到|推送|管理|重置)$
- * @priority 1
+ * @priority 999
  * @admin false
  * @disable false
- * @cron 0 0 6,22 * * *
+ * @cron 0 0 8,20 * * *
  */
 
 /**
@@ -19,6 +19,7 @@
  */
 
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
+const UA = require('../红灯区/mod/USER_AGENTS');
 const sysdb = new BncrDB('GlaDOS')
 
 module.exports = async s => {
@@ -90,6 +91,8 @@ async function manage(s) {
 
 // 设置参数
 async function set(s) {
+    // 获取UA
+    user_agent = await UA.USER_AGENT('Browser')
     set_json = {
         "tip": [
             "输入你的邮箱地址",
@@ -100,6 +103,9 @@ async function set(s) {
             {
                 "url": 'https://glados.rocks/api/authorization',
                 "method": "post",
+                "headers": {
+                    "User-Agent": user_agent
+                },
                 "data": {
                     "address": "",
                     "site": "glados.network"
@@ -108,6 +114,9 @@ async function set(s) {
             {
                 "url": 'https://glados.rocks/api/login',
                 "method": "post",
+                "headers": {
+                    "User-Agent": user_agent
+                },
                 "data": {
                     "method": "email",
                     "site": "glados.network",
@@ -128,7 +137,16 @@ async function set(s) {
             (i == 0) && (set_json.options[0].data.address = set_json.options[1].data.email = text) && ((await mo.request(set_json.options[i])).data.code == 0);
             if (i == 1) {
                 set_json.options[1].data.mailcode = text
-                data = await mo.request(set_json.options[i])
+
+                do {
+                    if (data = await mo.request(set_json.options[i])) {
+                        circulate = false
+                    } else {
+                        circulate = true
+                        await sysMethod.sleep(1)
+                    }
+                } while (circulate)
+
                 if (!data.data.code == 0) {
                     return s.reply(data.data.message)
                 }
@@ -186,7 +204,7 @@ async function push(s, noedit) {
                             msg: await sign_in(s, value.Cookie[j], true),
                             type: 'text',
                         });
-                        await sysMethod.sleep(1);
+                        await sysMethod.sleep(2);
                     }
                 } else {
                     main(s, value.Cookie)
@@ -219,7 +237,7 @@ async function sign_in(s, Cookie, push) {
     let headers = {
         "Content-Type": "application/json;charset=UTF-8",
         "Accept": "application/json, text/plain, */*",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.52",
+        "User-Agent": await UA.USER_AGENT('Browser'),
         "Cookie": Cookie,
     }
     let options = [
@@ -235,31 +253,46 @@ async function sign_in(s, Cookie, push) {
             "headers": headers
         },
     ]
-    let checkin = await mo.request(options[0])
-    let statuss = await mo.request(options[1])
+    do {
+        if ((checkin = await mo.request(options[0])) && (statuss = await mo.request(options[1]))) {
+            circulate = false
+        } else {
+            circulate = true
+            console.log('失败，3秒后循环')
+            await sysMethod.sleep(3)
+        }
+    } while (circulate)
     if ((checkin.status == 200 || checkin.data) && (statuss.status == 200 || statuss.data)) {
         let data = checkin.data
         let status = statuss.data
-        if ((data.code == 0 || data.code == 1) && (status.code == 0 || status.code == 1)) {
-            if (data.message == `Checkin! Get 1 Day`) data.message = `签到成功！获得 1 天`
-            if (data.message == `Please Try Tomorrow`) data.message = `请明天试试`
-            if (time = data.list[0].time) time = mo.time(time, 2)
-            else time = "暂无数据"
-            if ((traffic = Number(status.data.traffic)) > 1073741824) traffic = `${((traffic) / 1073741824).toFixed(2)}GB`
-            else traffic = `${(traffic / 1048576).toFixed(2)}MB`
-            if ((remainder = vip[status.data.vip] * 1073741824 - status.data.traffic) > 1073741824) remainder = `${((remainder) / 1073741824).toFixed(2)}GB`
-            else remainder = `${((remainder) / 1048576).toFixed(2)}MB`
-            msg = `用户ID：${data.list[0].user_id}`
-            msg += `\n剩余天数：${Number(status.data.leftDays)}天`
-            msg += `\n本月流量：${vip[status.data.vip]}GB`  // 通过vip级别对应的流量套餐
-            msg += `\n已用流量：${traffic}`
-            msg += `\n剩余流量：${remainder}`
-            msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
-            msg += `\n签到结果：${data.message}`
-            msg += `\n签到时间：${time}`
-        } else {
-            console.log(`\n${Cookie}`, data)
-            msg = `${data.message}\n检查Cookie\n重置后再试`
+        try {
+            if ((data.code == 0 || data.code == 1) && (status.code == 0 || status.code == 1)) {
+                if (data.message == `Checkin! Get 1 Day`) data.message = `签到成功！获得 1 天`
+                if (data.message == `Please Try Tomorrow`) data.message = `请明天试试`
+                if (data.message == `Can not Checkin with zero day membership`) return msg = `会员资格失效，无法签到`
+                if (time = data?.list[0].time) time = mo.time(time, 2)
+                else time = "暂无数据"
+                if ((traffic = Number(status.data.traffic)) > 1073741824) traffic = `${((traffic) / 1073741824).toFixed(2)}GB`
+                else traffic = `${(traffic / 1048576).toFixed(2)}MB`
+                if ((remainder = vip[status.data.vip] * 1073741824 - status.data.traffic) > 1073741824) remainder = `${((remainder) / 1073741824).toFixed(2)}GB`
+                else remainder = `${((remainder) / 1048576).toFixed(2)}MB`
+                msg = `用户ID：${data.list[0].user_id}`
+                msg += `\n剩余天数：${Number(status.data.leftDays)}天`
+                msg += `\n本月流量：${vip[status.data.vip]}GB`  // 通过vip级别对应的流量套餐
+                msg += `\n已用流量：${traffic}`
+                msg += `\n剩余流量：${remainder}`
+                msg += `\n┄┅┄┅┄┅┄┅┄┅┄┅┄`
+                msg += `\n签到结果：${data.message}`
+                msg += `\n签到时间：${time}`
+            } else {
+                console.log(`\n${Cookie}`, data)
+                msg = `${data.message}\n检查Cookie\n重置后再试`
+            }
+        } catch {
+            msg = `未知错误`
+            console.log(msg)
+            console.log(data)
+            console.log(status)
         }
     } else {
         msg = `查询出错，Cookie可能错误\n重置后再试`
