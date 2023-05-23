@@ -4,7 +4,7 @@
  * @description 方便开发
  * @author 薛定谔的大灰机
  * @origin 大灰机
- * @version v1.0.4
+ * @version v1.0.5
  * @module true
  * @encrypt false
  * @public false
@@ -26,15 +26,20 @@ module.exports = {
 // 请求
 async function request(options) {
     if (!options?.url) throw new Error('网址为必填项')
-    var data = await axios({
-        url: options.url,
-        method: options?.method || 'GET',
-        data: options?.data || {},
-        params: options?.params || {},      // 访问时的拼接参数
-        headers: options?.headers || {},
-        responseType: options?.responseType || "",
-        timeout: options?.timeout || 15000,
-    });
+    try {
+        var data = await axios({
+            url: options.url,
+            method: options?.method || 'GET',
+            data: options?.data || {},
+            params: options?.params || {},      // 访问时的拼接参数
+            headers: options?.headers || {},
+            responseType: options?.responseType || "",
+            timeout: options?.timeout || 15000,
+        });
+    }
+    catch (err) {
+        return
+    }
     if (data.status === 200) {
         return data
     } else {
@@ -70,7 +75,7 @@ async function reply(s, content) {
     async function down() {
         temporary = await s.reply(msg)
         open = false;
-        (path = await downloadFile(path, suffix)), open = true;   /* 存储视频 */
+        (path = await downloadFile(path, suffix)), open = true;   /* 存储文件 */
         if (msgid = await s.reply({
             type: type,
             path: path,
@@ -86,7 +91,7 @@ async function reply(s, content) {
         await s.reply(msg)
         await s.reply({
             type: type,
-            path: await system.get('Host') + (await downloadFile(path, `mp4`)).match(/\/public.*/g),
+            path: await system.get('Host') + (await downloadFile(path, suffix)).match(/\/public.*/g),
         })
         await sysMethod.sleep(15);
         fs.unlinkSync(path);
