@@ -2,11 +2,11 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.2
+ * @version 1.1.3
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
- * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)([0-9]+)$
- * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重置)$
+ * @rule ^(爱快|ikuai|iKuai)(重拨|重播)([0-9]+)$
+ * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重播|重启|重置)$
  * @admin true
  * @disable false
  */
@@ -18,23 +18,23 @@
 不属于同一局域网但有多拨，使用时请勿重拨插件正在使用的线路，否则失联！！！
 
 功能：
-支持多线、单线重拨（自行修改插件内 'mode' 变量）
+支持多线、单线重拨（自行修改插件内 'mode' 变量切换）
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
 显示重拨后新的IP
 
 本次更新内容：
-优化多线重拨逻辑，提升多线的重拨速度
-优化并修复对话内容问题
+新增爱快系统重启
  */
 
 sysMethod.testModule(['md5'], { install: true });
 const axios = require('axios');
 const sysdb = new BncrDB('DHJ');    // 表
+const key = `ikuai`;    // 键
 const md5 = require('md5');
 
 module.exports = async s => {
-    let diy_directives = `time` // 自定义执行一条命令(例如:更换白名单)
+    let diy_directives = `` // 自定义执行一条命令(例如:更换白名单)
     let bncr_restart = false    // 重拨IP后是否重启Bncr
     let restart_wait = 5        // 重拨后多久执行重启Bncr
 
@@ -44,31 +44,46 @@ module.exports = async s => {
 
     let content_list = 60       // 对话超时时间
     let Redial_wait = 2         // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
-    let msg_list = { wait: 20 } // 撤回IP列表消息时间，留空为不撤回(留空示例：let msg_list = '')
+    let msg_list = { wait: 30 } // 撤回IP列表消息时间，留空为不撤回(留空示例：let msg_list = '')
     let msg_wait = 2            // 撤回提示消息时间(成功或错误提示)
 
     let path = 'https://img.qichacha.com/Product/32b13678-5d09-4734-b91d-ad9fdd0cf24d.jpg'  // 图片（可为空）
 
-    const key = `ikuai`;    // 键
-
-    ['查询', '重拨'].includes(s.param(2)) && await main(key);
-    ['重置'].includes(s.param(2)) && await reset(key);
-    async function main() {
-        s.delMsg(s.getMsgId())
-        if (value = await sysdb.get(key)) {
-            oldip = []
-            if (['查询'].includes(s.param(2))) {
+    s.delMsg(s.getMsgId())
+    if (value = await sysdb.get(key)) {
+        switch (s.param(2)) {
+            case '查询':
+                msg_list = { wait: 0 }
                 await get_ip(value, await get_cookie(value), true)
-                return;
-            }
-            if (s.param(3)) {
-                await select_id((await get_ip(value, await get_cookie(value), false)), s.param(3))
-            } else {
-                await select_id(await get_ip(value, await get_cookie(value), true))
-            }
-        } else {
-            await set(key)
+                break;
+            case '重拨':
+            case '重播':
+                if (s.param(3)) {
+                    await select_id(await get_ip(value, await get_cookie(value), false), s.param(3))
+                } else {
+                    await select_id(await get_ip(value, await get_cookie(value), true))
+                }
+                break;
+            case '重启':
+                await restart(value)
+                break;
+            case '重置':
+                await reset(key)
+                break;
+            default:
+                return
+                break;
         }
+    } else await set(key)
+    // 执行完成后的操作
+    if (diy_directives) {
+        console.log(`执行自定义命令`);
+        sysMethod.inline(diy_directives);
+    }
+    if (bncr_restart) {
+        await sysMethod.sleep(restart_wait)
+        console.log(`执行重启Bncr`);
+        sysMethod.inline('重启');
     }
 
     // 获取Cookie
@@ -189,7 +204,7 @@ module.exports = async s => {
                                 }), msg_list)
                                 !['HumanTG'].includes(s.getFrom()) && s.reply(msg);
                             }
-                            return id//[8]//
+                            return id
                         }
                     } else return console.log(`获取IP异常：\n${JSON.stringify(data.data)}`)
                 } else return console.log(`获取IP异常：${data.status}`)
@@ -212,7 +227,7 @@ module.exports = async s => {
             return
         }
         if (id.length == 1) {
-            await Redial(id[0], id[0])
+            await Redial(id[0], (id[0]))
             return
         }
         msgid_ids = await s.reply({
@@ -310,18 +325,29 @@ module.exports = async s => {
                 } else return console.log(`PPPoE\nID:${json_Redial.data.param.id}:${json_Redial.tip[i]}异常：${data.status}`);
             };
         };
-        if (diy_directives) {
-            console.log(`执行自定义命令`);
-            sysMethod.inline(diy_directives);
-        }
-        if (bncr_restart) {
-            await sysMethod.sleep(restart_wait)
-            console.log(`执行重启Bncr`);
-            sysMethod.inline('重启');
-        }
         s.delMsg(await s.reply({ msg: `ID:${id}:重启完成`, type: 'text', dontEdit: true }), { wait: 5 });
         newips(id, getMsg)
         return true;
+    }
+
+    // ikuai重启
+    async function restart(value) {
+        options = {
+            "url": `${value.host}/Action/call`,
+            "headers": {
+                "cookie": await get_cookie(value),
+            },
+            "data": {
+                "func_name": "reboots",
+                "action": "reboots"
+            }
+        }
+        data = await post(options.url, options.headers, options.data)
+        if (data.status === 200) {
+            if (data.data.Result === 30000) {
+                s.reply(`正在重启`)
+            } else s.reply(`失败`)
+        } else s.reply(`访问失败`)
     }
 
     // post请求
@@ -342,13 +368,11 @@ module.exports = async s => {
                 "host",
                 "username",
                 "password",
-                // "pass"
             ],
             "tip": [
-                "爱快地址",
-                "登录名",
-                "password",
-                // "pass参数"
+                "爱快地址(带上协议和端口)",
+                "用户名",
+                "密码",
             ]
         }
         let value = {}
