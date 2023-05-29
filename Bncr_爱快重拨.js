@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.3
+ * @version 1.1.4
  * @description 控制iKuai重新拨号
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(重拨|重播)([0-9]+)$
@@ -22,9 +22,6 @@
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
 显示重拨后新的IP
-
-本次更新内容：
-新增爱快系统重启
  */
 
 sysMethod.testModule(['md5'], { install: true });
@@ -43,7 +40,7 @@ module.exports = async s => {
     let mode = 1                // 模式，link: 0，vlan: 1   (单拨选link，单线多拨选vlan)
 
     let content_list = 60       // 对话超时时间
-    let Redial_wait = 2         // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
+    let Redial_wait = 1         // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
     let msg_list = { wait: 30 } // 撤回IP列表消息时间，留空为不撤回(留空示例：let msg_list = '')
     let msg_wait = 2            // 撤回提示消息时间(成功或错误提示)
 
@@ -51,6 +48,7 @@ module.exports = async s => {
 
     s.delMsg(s.getMsgId())
     if (value = await sysdb.get(key)) {
+        oldip = []
         switch (s.param(2)) {
             case '查询':
                 msg_list = { wait: 0 }
@@ -61,7 +59,7 @@ module.exports = async s => {
                 if (s.param(3)) {
                     await select_id(await get_ip(value, await get_cookie(value), false), s.param(3))
                 } else {
-                    await select_id(await get_ip(value, await get_cookie(value), true))
+                    await get_ip(value, await get_cookie(value), true)
                 }
                 break;
             case '重启':
