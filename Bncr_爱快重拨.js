@@ -56,11 +56,8 @@ module.exports = async s => {
                 break;
             case '重拨':
             case '重播':
-                if (s.param(3)) {
-                    await select_id(await get_ip(value, await get_cookie(value), false), s.param(3))
-                } else {
-                    await get_ip(value, await get_cookie(value), true)
-                }
+                if (s.param(3)) await select_id(await get_ip(value, await get_cookie(value), false), s.param(3))
+                else await select_id(await get_ip(value, await get_cookie(value), true))
                 break;
             case '重启':
                 await restart(value)
