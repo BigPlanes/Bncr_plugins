@@ -231,7 +231,7 @@ module.exports = async s => {
 
     // 获取并发送新IP
     async function newips(id, getMsg, num) {
-        if ((newip = await get_ip(value, await get_cookie(value), false, getMsg - 1)) != oldip[getMsg - 1] && retry) {
+        if ((newip = await get_ip(value, await get_cookie(value), false, getMsg - 1)) == oldip[getMsg - 1] && retry) {
             if (num <= retry_num) {
                 s.delMsg(await s.reply(`ID:${id}\nIP未改变\n第${num}次重试`), { wait: retry_wait + msg_wait + Redial_wait })
                 await sysMethod.sleep(retry_wait)
