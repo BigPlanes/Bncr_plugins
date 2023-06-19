@@ -2,9 +2,8 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.4
+ * @version 1.1.5
  * @description 控制iKuai重新拨号
- * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(爱快|ikuai|iKuai)(重拨|重播)([0-9]+)$
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重播|重启|重置)$
  * @admin true
@@ -22,6 +21,10 @@
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
 显示重拨后新的IP
+
+本次更新内容：
+新增爱快重拨后IP未改变 重试
+新增爱快重拨后重启Bncr 提示
  */
 
 sysMethod.testModule(['md5'], { install: true });
@@ -29,15 +32,21 @@ const axios = require('axios');
 const sysdb = new BncrDB('DHJ');    // 表
 const key = `ikuai`;    // 键
 const md5 = require('md5');
+const sysDB = new BncrDB('system')
 
 module.exports = async s => {
-    let diy_directives = `` // 自定义执行一条命令(例如:更换白名单)
-    let bncr_restart = false    // 重拨IP后是否重启Bncr
+    let mode = 1                // 模式，link: 0，vlan: 1   (单拨选link，单线多拨选vlan)
+
+    let retry = true            // 重拨后未换IP时是否重试
+    let retry_num = 3           // 重试次数
+    let retry_wait = 5          // 重试间隔时间
+
+    let bncr_restart = false    // 重拨后是否重启Bncr
     let restart_wait = 5        // 重拨后多久执行重启Bncr
 
-    let hide = true             // 是否隐藏IP网段
+    let diy_directives = ``     // 自定义执行一条命令(例如:更换白名单)
 
-    let mode = 1                // 模式，link: 0，vlan: 1   (单拨选link，单线多拨选vlan)
+    let hide = true             // 是否隐藏IP网段
 
     let content_list = 60       // 对话超时时间
     let Redial_wait = 1         // 重拨间隔时间（重拨是禁用线路再启用，其中的间隔时间）
@@ -61,6 +70,7 @@ module.exports = async s => {
                 break;
             case '重启':
                 await restart(value)
+                await reboot()
                 break;
             case '重置':
                 await reset(key)
@@ -75,10 +85,20 @@ module.exports = async s => {
         console.log(`执行自定义命令`);
         sysMethod.inline(diy_directives);
     }
-    if (bncr_restart) {
-        await sysMethod.sleep(restart_wait)
-        console.log(`执行重启Bncr`);
-        sysMethod.inline('重启');
+    async function reboot() {
+        if (bncr_restart) {
+            MsgId = await s.reply(`重启Bncr`);
+            console.log(`执行重启Bncr`);
+            await sysDB.set('restartInfo', {
+                platform: s.getFrom(),
+                msg: 'Bncr重启完成', //重启完成回复语
+                userId: s.getUserId(),
+                groupId: s.getGroupId(),
+                toMsgId: MsgId,
+            });
+            await sysMethod.sleep(restart_wait)
+            process.exit(300);
+        }
     }
 
     // 获取Cookie
@@ -140,6 +160,7 @@ module.exports = async s => {
             if (data = await post(json_getIp.url, json_getIp.headers, json_getIp[json_getIp.mode[mode]])) {
                 if (data.status === 200) {
                     if (data.data.Result === 30000) {
+                        let msg
                         let id = []
                         if (mode == 0) {
                             data = data.data.Data.iface_check
@@ -209,10 +230,22 @@ module.exports = async s => {
     }
 
     // 获取并发送新IP
-    async function newips(id, getMsg) {
-        msg = `ID:${id}\n旧IP:${oldip[getMsg - 1] || `不存在的线路`}\n新IP:${await get_ip(value, await get_cookie(value), false, getMsg - 1)}`
-        s.delMsg(await s.reply({ msg: msg, type: 'text', dontEdit: true }), msg_list)
-        console.log(msg);
+    async function newips(id, getMsg, num) {
+        if ((newip = await get_ip(value, await get_cookie(value), false, getMsg - 1)) != oldip[getMsg - 1] && retry) {
+            if (num <= retry_num) {
+                s.delMsg(await s.reply(`ID:${id}\nIP未改变\n第${num}次重试`), { wait: retry_wait + msg_wait + Redial_wait })
+                await sysMethod.sleep(retry_wait)
+                Redial(id, getMsg, num + 1, true)
+            } else {
+                s.delMsg(await s.reply(`ID:${id}\nIP:${newip}\n重拨完成但IP未改变`), msg_list)
+                await reboot()
+            }
+        } else {
+            msg = `ID:${id}\n旧IP:${oldip[getMsg - 1] || `不存在的线路`}\n新IP:${newip}`
+            s.delMsg(await s.reply({ msg: msg, type: 'text', dontEdit: true }), msg_list)
+            console.log(msg);
+            await reboot()
+        }
     }
 
     // 获取需要重拨的线路id
@@ -258,7 +291,8 @@ module.exports = async s => {
     }
 
     // pppoe重拨
-    async function Redial(id, getMsg) {
+    async function Redial(id, getMsg, num, notip) {
+        if (!num) num = 1
         if (isNaN(id)) {
             s.delMsg(await s.reply({ type: 'text', msg: '输入错误', dontEdit: true }), { await: msg_wait })
             return
@@ -320,8 +354,8 @@ module.exports = async s => {
                 } else return console.log(`PPPoE\nID:${json_Redial.data.param.id}:${json_Redial.tip[i]}异常：${data.status}`);
             };
         };
-        s.delMsg(await s.reply({ msg: `ID:${id}:重启完成`, type: 'text', dontEdit: true }), { wait: 5 });
-        newips(id, getMsg)
+        if (!notip) s.delMsg(await s.reply({ msg: `ID:${id}:重启完成`, type: 'text', dontEdit: true }), { wait: 5 });
+        newips(id, getMsg, num)
         return true;
     }
 
