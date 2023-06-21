@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.5
+ * @version 1.1.6
  * @description 控制iKuai重新拨号
  * @rule ^(爱快|ikuai|iKuai)(重拨|重播)([0-9]+)$
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重播|重启|重置)$
@@ -20,11 +20,7 @@
 支持多线、单线重拨（自行修改插件内 'mode' 变量切换）
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
-显示重拨后新的IP
-
-本次更新内容：
-新增爱快重拨后IP未改变 重试
-新增爱快重拨后重启Bncr 提示
+显示重拨后新的IP（重拨后IP未改变时'重试'）
  */
 
 sysMethod.testModule(['md5'], { install: true });
@@ -70,7 +66,7 @@ module.exports = async s => {
                 break;
             case '重启':
                 await restart(value)
-                await reboot()
+                // await reboot()
                 break;
             case '重置':
                 await reset(key)
@@ -80,23 +76,25 @@ module.exports = async s => {
                 break;
         }
     } else await set(key)
-    // 执行完成后的操作
-    if (diy_directives) {
-        console.log(`执行自定义命令`);
-        sysMethod.inline(diy_directives);
-    }
+
+    // 自定义命令和重启Bncr
     async function reboot() {
+        // 自定义操作
+        if (diy_directives) {
+            console.log(`执行自定义命令`);
+            await sysMethod.inline(diy_directives);
+        }
+        // 重启Bncr
         if (bncr_restart) {
-            MsgId = await s.reply(`重启Bncr`);
             console.log(`执行重启Bncr`);
+            await sysMethod.sleep(restart_wait)
             await sysDB.set('restartInfo', {
                 platform: s.getFrom(),
                 msg: 'Bncr重启完成', //重启完成回复语
                 userId: s.getUserId(),
                 groupId: s.getGroupId(),
-                toMsgId: MsgId,
+                toMsgId: await s.reply(`正在重启Bncr`), //消息ID
             });
-            await sysMethod.sleep(restart_wait)
             process.exit(300);
         }
     }
