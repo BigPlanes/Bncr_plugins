@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 爱快重拨
  * @origin 大灰机
- * @version 1.1.6
+ * @version 1.1.7
  * @description 控制iKuai重新拨号
  * @rule ^(爱快|ikuai|iKuai)(重拨|重播)([0-9]+)$
  * @rule ^(爱快|ikuai|iKuai)(查询|重拨|重播|重启|重置)$
@@ -20,7 +20,7 @@
 支持多线、单线重拨（自行修改插件内 'mode' 变量切换）
 重拨后重启Bncr（自行修改插件内 'bncr_restart' 变量）
 显示当前拨号IP列表
-显示重拨后新的IP（重拨后IP未改变时'重试'）
+显示重拨后新的IP
  */
 
 sysMethod.testModule(['md5'], { install: true });
@@ -76,7 +76,6 @@ module.exports = async s => {
                 break;
         }
     } else await set(key)
-
     // 自定义命令和重启Bncr
     async function reboot() {
         // 自定义操作
@@ -411,7 +410,7 @@ module.exports = async s => {
             }
         };
         // 写入数据库
-        values && s.delMsg(await s.reply(await sysdb.set(key, value, { def: '设置成功' })), { wait: msg_wait }) && main(key);   // 值
+        values && s.delMsg(await s.reply(await sysdb.set(key, value, { def: '设置成功' })), { wait: msg_wait }) // 值
         // 对话
         async function dialogue(tip) {
             first = await s.reply(`输入${tip}`);
