@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 机场签到
  * @origin 大灰机
- * @version 1.0.6
+ * @version 1.0.7
  * @description 每日GlaDOS签到(每签到一次续杯一天，理论无限续杯)
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^(机场|鸡场)(登录|登陆|签到|推送|管理|重置)$
@@ -244,7 +244,7 @@ async function sign_in(s, Cookie, push) {
         {
             "url": "https://glados.rocks/api/user/checkin",
             "method": "post",
-            "data": '{"token":"glados.network"}',
+            "data": '{"token":"glados.one"}',
             "headers": headers
         },
         {
