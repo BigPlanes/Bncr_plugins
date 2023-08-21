@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 点歌
  * @origin 大灰机
- * @version 1.0.0
+ * @version 1.0.1
  * @description 发送一首音乐
  * @platform tgBot qq ssh HumanTG wxQianxun wxXyo
  * @rule ^点歌([^\n]+) ([^\n]+)$
@@ -23,8 +23,8 @@ module.exports = async s => {
 
     s.delMsg(s.getMsgId())
     let url = [
-        `http://ovooa.muban.plus/API/QQ_Music_new/?&limit=${s.param(2) || "15"}&`,
-        `http://ovooa.muban.plus/API/wydg/api.php?sc=${s.param(2) || "15"}&`
+        `http://ovooa.sc1.fun/API/QQ_Music//?&limit=${s.param(2) || "15"}&`,
+        `http://ovooa.sc1.fun/API/wydg/api.php?sc=${s.param(2) || "15"}&`
     ][platform]
     let urls = `${url}msg=${encodeURI(s.param(1))}`
     console.log(urls);
