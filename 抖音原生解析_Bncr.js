@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 抖音原生解析
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @description 视频解析，仅支持抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
  * @priority 9999
@@ -10,13 +10,14 @@
  * @disable false
  */
 
-const UA = require('/bncr/BncrData/plugins/红灯区/mod/USER_AGENTS')     // 依赖红灯区UA模块 (调用方法：'await UA.USER_AGENT('Browser')')
+// const UA = require('/bncr/BncrData/plugins/红灯区/mod/USER_AGENTS')     // 依赖红灯区UA模块 (调用方法：'await UA.USER_AGENT('Browser')')
 const xbogus = require('./mod/X_Bogus')      // 此脚本依赖仓库模块，请拉取全部文件
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
 
 module.exports = async s => {
     // 获取UA
-    user_agent = await UA.USER_AGENT('Browser')
+    // user_agent = await UA.USER_AGENT('Browser')
+    user_agent = "Mozilla/5.0(WindowsNT10.0;Win64;x64)AppleWebKit/537.36(KHTML,likeGecko)Chrome/" + 108 + Math.round(Math.random() * 10) + ".0.3497." + Math.round(Math.random() * 100) + "Safari/537.36 Edg/115.0.1901.203"
 
     // 链接提取视频id
     if (s.param(1).includes(`www`)) {
@@ -68,7 +69,7 @@ module.exports = async s => {
         return
     } else if (data.status_code == `0`) {
         console.log(`打开data成功`)
-        s.reply(`获取到数据，请稍后……`)
+        // s.reply(`获取到数据，请稍后……`)
     } else if (!data.item_list && data.filter_list == ``) {
         s.reply(`解析出错：数据为空`)
         return
@@ -132,7 +133,7 @@ module.exports = async s => {
             for (let i = 0; i < data.aweme_detail.images.length; i++) {
                 file[i] = data.aweme_detail.images[i].url_list[0]
             }
-            _msg = `[烟花]图集:${data.aweme_detail.images.length}张\n⬇️⬇️⬇️\n`
+            _msg = `[烟花]数量:${data.aweme_detail.images.length}`
             suffix = `jpg`
         } else {
             console.log(`解析失败，请查看视频是否正常`)
@@ -141,7 +142,9 @@ module.exports = async s => {
         msg = `抖音原生${type}解析\n \n`
         msg += `[庆祝]标题：${desc}\n`
         msg += `┄┅┄┅┄┅┄┅┄┅┄┅┄\n`
-        msg += `[哇]作者:【${nickname}】 ${user_age}岁\n`
+        msg += `[哇]作者:【${nickname}】`
+        if (user_age == `-1`) msg += `\n`
+        else  msg += ` ${user_age}岁\n`
         msg += `UID:${uid}\n`
         msg += `┄┅┄┅┄┅┄┅┄┅┄┅┄\n`
         msg += `[咖啡]发布时间:${create_time}\n`
@@ -160,13 +163,13 @@ module.exports = async s => {
 // 缩短链请求
 async function short_url(url) {
     var data = await mo.request({
-        "url": `https://xiaoapi.cn/API/dwz.php?url=${url}`,
+        "url": `http://xiaoapi.cn/API/dwz.php?url=${url}`,
         "method": "get",
     });
-    if (data.status === 200) {
+    if (data?.status === 200) {
         return data.data
     } else {
-        console.log(url);
+        console.log('缩短链失败', url);
         return url
     }
 }
