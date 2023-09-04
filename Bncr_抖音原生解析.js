@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 抖音原生解析
  * @origin 大灰机
- * @version 1.0.2
+ * @version 1.0.3
  * @description 视频解析，仅支持抖音
  * @rule (http.?://\S+douyin\.com/\S+/?)
  * @priority 9999
@@ -13,6 +13,11 @@
 // const UA = require('/bncr/BncrData/plugins/红灯区/mod/USER_AGENTS')     // 依赖红灯区UA模块 (调用方法：'await UA.USER_AGENT('Browser')')
 const xbogus = require('./mod/X_Bogus')      // 此脚本依赖仓库模块，请拉取全部文件
 const mo = require('./mod/subassembly')      // 此脚本依赖仓库模块，请拉取全部文件
+
+
+// 抓取抖音cookie中包含的参数，如果失效请直接替换passport_csrf_token和passport_csrf_token_default参数
+const passport_csrf_token = `c6a6345847cc2171db450797ed89fbb1`
+const passport_csrf_token_default = `c6a6345847cc2171db450797ed89fbb1`
 
 module.exports = async s => {
     // 获取UA
@@ -38,9 +43,8 @@ module.exports = async s => {
     let query = `aweme_id=${aweme_id}&aid=1128&version_name=23.5.0&device_platform=android&os_version=2333`
     let X_Bogus = await xbogus.sign(query, user_agent)
     let msToken = `msToken=${getRandomString(107)}`
-    let odin_tt = `odin_tt=324fb4ea4a89c0c05827e18a1ed9cf9bf8a17f7705fcc793fec935b637867e2a5a9b8168c885554d029919117a18ba69;${await ttwid()}`
     let bd_ticket_guard_client_data = `bd_ticket_guard_client_data=eyJiZC10aWNrZXQtZ3VhcmQtdmVyc2lvbiI6MiwiYmQtdGlja2V0LWd1YXJkLWNsaWVudC1jc3IiOiItLS0tLUJFR0lOIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLVxyXG5NSUlCRFRDQnRRSUJBREFuTVFzd0NRWURWUVFHRXdKRFRqRVlNQllHQTFVRUF3d1BZbVJmZEdsamEyVjBYMmQxXHJcbllYSmtNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUVKUDZzbjNLRlFBNUROSEcyK2F4bXAwNG5cclxud1hBSTZDU1IyZW1sVUE5QTZ4aGQzbVlPUlI4NVRLZ2tXd1FJSmp3Nyszdnc0Z2NNRG5iOTRoS3MvSjFJc3FBc1xyXG5NQ29HQ1NxR1NJYjNEUUVKRGpFZE1Cc3dHUVlEVlIwUkJCSXdFSUlPZDNkM0xtUnZkWGxwYmk1amIyMHdDZ1lJXHJcbktvWkl6ajBFQXdJRFJ3QXdSQUlnVmJkWTI0c0RYS0c0S2h3WlBmOHpxVDRBU0ROamNUb2FFRi9MQnd2QS8xSUNcclxuSURiVmZCUk1PQVB5cWJkcytld1QwSDZqdDg1czZZTVNVZEo5Z2dmOWlmeTBcclxuLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tXHJcbiJ9`
-    let cookie = `${msToken};${odin_tt};${bd_ticket_guard_client_data}`
+    let cookie = `${msToken};${await ttwid()};${bd_ticket_guard_client_data};passport_csrf_token=${passport_csrf_token};passport_csrf_token_default=${passport_csrf_token_default}`
     let url = `https://www.douyin.com/aweme/v1/web/aweme/detail/?${query}&X-Bogus=${X_Bogus}`
 
     // 获取接口数据
@@ -200,7 +204,7 @@ function getRandomString(len) {
 
 async function ttwid() {
     // request 网络请求
-    var { headers } = await mo.request({
+    var { data } = await mo.request({
         url: `https://ttwid.bytedance.com/ttwid/union/register/`,
         method: "post",
         data: {
@@ -210,6 +214,10 @@ async function ttwid() {
             },
             "cbUrlProtocol": "https", "union": true
         },
+    })
+    var { headers } = await mo.request({
+        url: data.redirect_url,
+        method: "get",
     })
     text = String(headers[`set-cookie`][0].split(`;`)[0])
     return text
