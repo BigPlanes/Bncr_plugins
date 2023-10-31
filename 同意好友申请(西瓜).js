@@ -2,7 +2,7 @@
  * @author 薛定谔的大灰机
  * @name 同意好友申请
  * @origin 大灰机
- * @version 1.0.1
+ * @version 1.0.2
  * @rule 收到好友添加请求
  * @description 下方加群关键词可自定义
  * @rule 加群
@@ -68,7 +68,7 @@ const GroupId = '25214210457'
 const mode = 'InviteInGroupByLink'
 
 module.exports = async s => {
-    if (s.param(1) != '收到好友添加请求') {
+    if (s.getMsg() !== '收到好友添加请求') {
         Group()
     } else {
         Friend()
