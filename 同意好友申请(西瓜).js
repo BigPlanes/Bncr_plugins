@@ -77,7 +77,7 @@ module.exports = async s => {
     async function Group() {
         await s.reply({
             type: 'Group',
-            msg: '同意好友申请',
+            msg: '申请加群',
             api: mode,
             group_wxid: GroupId + '@chatroom',
             friend_wxid: s.getUserId()
