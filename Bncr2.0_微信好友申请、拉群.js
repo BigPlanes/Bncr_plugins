@@ -1,17 +1,26 @@
 /**作者
  * @author 薛定谔的大灰机
- * @name 微信好友申请、拉群
+ * @name 同意好友申请
  * @origin 大灰机
- * @version 2.0.0
+ * @version 2.0.1
  * @rule 收到好友添加请求
- * @description 
- * @rule ^(加|进)([^ \n]+)群$
+ * @description 下方加群关键词可自定义
+ * @rule ^(加|进)(.*)群$
  * @platform wxXyo
  * @priority 99999
  * @admin false
  * @disable false
  */
 
+ /**    更新日志：
+            2.0.1：
+              1.如果将“关键词和群ID”填写为`@1234567890`，发送“加群”则会拉对应群（仅支持设置1个不带关键词）
+              2.没有按照1描述中的关键词留空，则发送“加群”则会将已储存的关键词列表发送出来：
+              
+            2.0.0：
+              适配Bncr2.0，支持web页、修改无界配置命令修改配置
+ */
+ 
 /**     使用说明：
         修改适配器【wxXyo.js】
 
@@ -81,6 +90,7 @@ module.exports = async s => {
     	if (CDB.GroupId_keyword.length < 1) {
     		return s.reply('未设置群ID')
     	}
+    	let group_list = '已添加的群：\n '
     	for (let i = 0; i < CDB.GroupId_keyword.length; i++) {
     		let Keyword = CDB.GroupId_keyword[i].split("@")[0]
     		let GroupId = CDB.GroupId_keyword[i].split("@")[1]
@@ -93,9 +103,15 @@ module.exports = async s => {
     				friend_wxid: s.getUserId()
                 })
                 return
+            } else if(!s.param(2)) {
+    			group_list += `\n${i + 1}.${Keyword}`
+    			continue
             } else if ((CDB.GroupId_keyword.length - 1) == i) {
             	s.reply("没有这个群哦[汗]")
             }
+        }
+        if (group_list) {
+        	s.reply(`${group_list}\n \n请发【加**群】`)
         }
     }
 
